@@ -102,7 +102,8 @@ def _chat_command(args: argparse.Namespace) -> int:
     try:
         model.check()
     except ModelUnavailable as error:
-        print(f"Cannot start: {error}\nStart the model server first:\n  {LLAMA_SERVER_COMMAND}", file=sys.stderr)
+        start = "Start all three servers: see Model routing in the README." if args.router_url else f"Start the model server first:\n  {LLAMA_SERVER_COMMAND}"
+        print(f"Cannot start: {error}\n{start}", file=sys.stderr)
         return 1
     # Each session has its own run numbers, so its traces need their own folder too.
     data_dir = DATA_ROOT / args.session

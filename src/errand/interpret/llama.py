@@ -170,9 +170,12 @@ class LlamaModel:
     def embed(self, text: str, timeout_seconds: float) -> list[float]:
         data = self._request("POST", "/v1/embeddings", json.dumps({"input": text}), timeout_seconds)
         try:
-            return json.loads(data)["data"][0]["embedding"]
+            vector = json.loads(data)["data"][0]["embedding"]
         except (json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
             raise ModelUnavailable(f"{self.address} sent an unexpected response: {error!r}") from error
+        if not any(vector):
+            raise ModelUnavailable(f"{self.address} sent an unexpected response: an embedding with no values")
+        return vector
 
     def _request(self, method: str, path: str, body: str | None, timeout_seconds: float) -> bytes:
         connection = http.client.HTTPConnection(self.host, self.port, timeout=timeout_seconds)

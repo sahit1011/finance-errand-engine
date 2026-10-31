@@ -6,7 +6,15 @@
    "route": "cheap"
   },
   {
+   "text": "START: Move my AC servicing to Saturday.",
+   "route": "cheap"
+  },
+  {
    "text": "START: Book the same electrician as last time, but not before 10 a.m.",
+   "route": "cheap"
+  },
+  {
+   "text": "START: Cancel my plumber on Friday.",
    "route": "cheap"
   },
   {
@@ -62,7 +70,15 @@
    "route": "cheap"
   },
   {
+   "text": "COLLECTING: this week",
+   "route": "cheap"
+  },
+  {
    "text": "COLLECTING: Rs 1500",
+   "route": "cheap"
+  },
+  {
+   "text": "COLLECTING: 1500",
    "route": "cheap"
   },
   {

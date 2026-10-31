@@ -6,9 +6,11 @@ message and the state, so review text never reaches it either.
 
 import json
 import math
+import time
 from dataclasses import replace
 from pathlib import Path
 
+from errand.core.domain import ModelUnavailable
 from errand.interpret.llama import HEALTH_TIMEOUT_SECONDS, LlamaModel
 from errand.interpret.model import ModelInput, ModelReply
 
@@ -24,8 +26,14 @@ def route_text(state: str | None, message: str) -> str:
 
 def load_routing() -> dict:
     """The labelled examples and threshold that benchmarks/routing/benchmark.py chose from measured results."""
-    routing = json.loads(ROUTING_FILE.read_text(encoding="utf-8"))
-    for example in routing["examples"]:
+    try:
+        routing = json.loads(ROUTING_FILE.read_text(encoding="utf-8"))
+        threshold, examples = routing["threshold"], routing["examples"]
+    except (OSError, json.JSONDecodeError, KeyError) as error:
+        raise ValueError(f"cannot read routing file {ROUTING_FILE}: {error!r}") from error
+    if not isinstance(threshold, float):
+        raise ValueError(f"bad threshold {threshold!r} in {ROUTING_FILE}")
+    for example in examples:
         if example["route"] not in ROUTES:
             raise ValueError(f"unknown route {example['route']!r} in {ROUTING_FILE}")
     return routing
@@ -56,13 +64,20 @@ class RoutedModel:
         self.vectors = [self.embedder.embed(example["text"], HEALTH_TIMEOUT_SECONDS) for example in self.examples]
 
     def decide(self, model_input: ModelInput, timeout_seconds: float) -> ModelReply:
+        started = time.perf_counter()
         route = self._route(model_input, timeout_seconds)
         if route == "none":
             return ModelReply(raw=NO_ACTION, served_by="router:none", prompt_tokens=0, completion_tokens=0, compute_seconds=0.0)
-        reply = (self.cheap if route == "cheap" else self.strong).decide(model_input, timeout_seconds)
+        # The turn cap covers the router too, so the model only gets the time that is left.
+        remaining = timeout_seconds - (time.perf_counter() - started)
+        if remaining <= 0:
+            raise ModelUnavailable(f"the router used all of the {timeout_seconds:g} seconds available")
+        reply = (self.cheap if route == "cheap" else self.strong).decide(model_input, remaining)
         return replace(reply, served_by=f"router:{route}")
 
     def _route(self, model_input: ModelInput, timeout_seconds: float) -> str:
         vector = self.embedder.embed(route_text(model_input.state, model_input.message), timeout_seconds)
+        if len(vector) != len(self.vectors[0]):
+            raise ModelUnavailable(f"the embedding size changed from {len(self.vectors[0])} to {len(vector)}")
         similarity, nearest = max(((_cosine(vector, other), index) for index, other in enumerate(self.vectors)), key=lambda pair: pair[0])
         return self.examples[nearest]["route"] if similarity >= self.threshold else "strong"

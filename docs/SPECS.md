@@ -160,8 +160,8 @@ own approval.
 Before proposing, the engine reads `list_bookings`. It blocks the same provider and slot, and asks
 first if the same service is already booked and active.
 
-If a reply cannot be delivered because of a crash, it stays saved and is shown on the next start, so a
-completed booking is never left unreported.
+A reply is saved before it is handed to the chat loop, and a crash before then shows it on the next start. A kill in
+the moment between that hand-over and the print could still lose the display, though the booking itself stands.
 
 ## Price for reschedule and cancel
 
@@ -302,7 +302,7 @@ These invariants run after every scenario:
 
 ## Live model
 
-`errand chat` talks to one `llama-server` on this machine, and nothing else.
+`errand chat` talks only to `llama-server` processes on this machine: one by default, three when routing.
 
 - **Local only:** a model URL that is not plain `http` to a loopback address is refused before any connection. The client uses `http.client`, which ignores proxy settings and follows no redirects.
 - **Shape of the output:** llama.cpp compiles a JSON schema into a grammar, so a live model cannot write an action outside the list above. Two choices in that schema came from real failures, recorded in `BUGS.md`: each detail is its own action, and `done` is fixed to true.
@@ -310,15 +310,15 @@ These invariants run after every scenario:
 - **All or nothing:** every action in an output is checked before any applies, so a rejected output changes nothing. It may hold one selection and one intent at most.
 - **Settings:** temperature 0, thinking off, at most 512 output tokens. These are our choices.
 
-Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 4B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`. The sample is 13 model calls from one set of live chats, so treat the percentiles as rough:
+Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 9B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`, over the 102 benchmark turns:
 
 | Measure | Value |
 | --- | --- |
-| Latency per model call | p50 1.32 s, p95 7.19 s, max 7.19 s |
-| Largest prompt and output | 1,333 and 248 tokens |
-| Server memory | 3.50 GB maximum resident, 1.33 GB peak footprint |
+| Latency per model call | p50 2.23 s, p95 6.17 s, max 9.56 s |
+| Largest prompt and output | 1,331 and 106 tokens |
+| Server memory | See [the routing results](../benchmarks/routing/results.md) |
 
-The slowest call seen is far below the 120-second turn cap, so the cap stays. Its job is to stop a stuck model, not to pace a normal one.
+The slowest call seen is far below the 120-second turn cap, so the cap stays. Its job is to stop a stuck model, not to pace a normal one. When routing, the router's time counts against the same cap.
 
 ## Nice-to-have: model routing
 
@@ -331,10 +331,11 @@ no LLM, the cheap LLM or the strong LLM. Bare answers are settled in code first,
 - **LLMs:** Qwen3.5 4B as cheap and Qwen3.5 9B as strong.
 - **What it can do:** only pick a route. It cannot approve anything, and it sees no review text.
 
-**Result:** on 102 hand-written turns, the router tied the strong LLM alone on correct answers (95 each) with one fewer
-wrong value (3 against 4) and about 8% less compute. Those differences are within noise, so we recommend running 9B alone.
-A perfect router would reach 99, so the room is real, but this router does not capture it. The cheap LLM routing itself
-was the worst option, because it sent most turns to the strong LLM after spending its own time. Laya was a candidate but
+**Result:** on 47 held-out turns, the router got 42 right with 3 wrong values, and 4B and 9B alone got 41 each with 4,
+with the router using about 13% less compute than 9B. That is within noise. A perfect router would reach 45, so the room
+is real, but this router does not capture it. Across all 102 turns, 9B got 95 and 4B got 91, and 9B's clearest edge is small
+talk, where it took no action on 10 of 10 and 4B on 5. So we recommend running 9B alone, on modest evidence. The cheap LLM
+routing itself was the worst option, because it sent most turns to the strong LLM after spending its own time. Laya was a candidate but
 is not measured: running its package was blocked by a permission check on this machine. Full tables are in
 [benchmarks/routing/results.md](../benchmarks/routing/results.md).
 

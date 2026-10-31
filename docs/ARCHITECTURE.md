@@ -13,7 +13,7 @@ gateway is the sole path to any tool, so no model output can cause a write by it
 | Orchestration | One turn from message to reply; caps; final error handling | Contain business rules |
 | Domain core | States, details, approvals, recovery, memory rules, reply text | Import a model client or a tool directly |
 | Interpretation | Turning user text into validated structured actions | Call tools, write to the store, or produce user-facing text |
-| Tool gateway | Running tools, blocking unapproved writes, sanitising results | Decide what to do next |
+| Tool gateway | Running tools, blocking unapproved writes, counting and tracing calls | Decide what to do next |
 | Infrastructure | Saving state, writing traces, time and ids | Know about business rules |
 | Mock world | Tool behaviour, failure injection, ground-truth ledger | Read the engine's storage |
 
@@ -29,8 +29,7 @@ The approval record and the gateway check, highlighted below, are the two pieces
 | Component | Responsibility |
 | --- | --- |
 | `cli` | Chat, offline demo and trace viewing commands |
-| `runner` | Runs one turn; enforces caps; holds the final error handler; resumes on start |
-| `recovery` | Finishes in-flight attempts and shows undelivered replies |
+| `runner` | Runs one turn; enforces caps; holds the final error handler; on start, shows undelivered replies and resumes in-flight work through the workflow |
 | `intake` | Settles bare yes or no, stop and memory commands in code, before any model runs |
 | `workflow` | Holds states, details and the one typed pending question; rejects illegal moves |
 | `approval` | Creates proposals and approval records; approves atomically; voids on any change |
@@ -40,8 +39,8 @@ The approval record and the gateway check, highlighted below, are the two pieces
 | Model interface | Returns structured actions from scripted or llama.cpp models |
 | `router` | Picks which model handles a turn (nice-to-have) |
 | Output validator | Rejects bad schemas and any provider, slot or option the engine did not present |
-| Tool gateway | Only path to tools: checks approval on writes, counts calls, traces, sanitises |
-| `store`, `trace` | SQLite state and JSON Lines trace files |
+| Tool gateway | Only path to tools: checks approval on writes, counts calls, traces |
+| `store`, `trace` | SQLite state, and JSON Lines trace files that remove secrets and cut review text to a preview |
 | Mock world | The 8 tools, the ledger and scenario configuration |
 | Eval harness | Runs scenarios, checks invariants and generates the eval table |
 
@@ -53,7 +52,7 @@ The approval record and the gateway check, highlighted below, are the two pieces
 
 A turn follows these steps:
 
-1. The turn runner starts the cap counters. If an attempt is in flight or unknown, it verifies that
+1. The turn runner starts the cap counters. A memory command takes effect first. If an attempt is in flight or unknown, it verifies that
    first, and the turn ends with the result. Only a stop changes what happens, by preventing a retry.
 2. Intake checks the raw message in code. A bare yes or no answers the one pending question, whatever
    its kind, and stop and memory commands are handled here too.
@@ -164,7 +163,7 @@ src/errand/
     world.py          the 8 tools, ledger, scenario config
 benchmarks/routing/   labelled turns, measured runs and results (live models, so not part of the tests)
 tests/
-  unit/               contract, intake, dates, model output, model client, chat command
+  unit/               contract, intake, dates, model output, model client, router, chat command
   evals/              42 scenarios, edge cases, invariants, sabotage tests, table generator
 docs/
 traces/               written at run time, not committed

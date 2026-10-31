@@ -3,11 +3,14 @@
 import json
 import subprocess
 import sys
+import time
+from threading import Timer
 
 import pytest
 from test_llama_model import StandInServer
 
 from errand.core.domain import ModelUnavailable
+from errand.interpret import router
 from errand.interpret.llama import LlamaModel
 from errand.interpret.model import ModelInput
 from errand.interpret.router import ROUTES, RoutedModel, load_routing, route_text
@@ -99,6 +102,58 @@ def test_a_bad_embedding_response_is_a_named_failure(servers):
         model.decide(ModelInput(message="easy", today="2026-11-02"), 5)
 
 
+def test_the_router_and_the_model_together_stay_inside_the_time_they_were_given(servers):
+    """The turn cap in docs/SPECS.md must hold when routed, so the model only gets what the router left."""
+    model = routed(servers)
+    cheap, strong, embedder = servers
+    strong.hang.set()
+    embedder.hang.set()
+    Timer(0.6, embedder.release.set).start()
+    started = time.perf_counter()
+    with pytest.raises(ModelUnavailable):
+        model.decide(ModelInput(message="hard", today="2026-11-02", state="COLLECTING"), 1.0)
+    assert time.perf_counter() - started < 1.4
+
+
+def test_a_router_that_used_all_the_time_does_not_call_a_model(servers):
+    model = routed(servers)
+    servers[2].hang.set()
+    Timer(0.4, servers[2].release.set).start()
+    # The embedder's own timeout is shorter than its answer, so the failure names the time.
+    with pytest.raises(ModelUnavailable, match="0.2"):
+        model.decide(ModelInput(message="easy", today="2026-11-02", state="COLLECTING"), 0.2)
+    assert llm_calls(servers) == (0, 0)
+
+
+def test_an_embedding_of_all_zeros_is_a_named_failure(servers):
+    model = routed(servers)
+    servers[2].body = {"data": [{"embedding": [0.0, 0.0, 0.0]}]}
+    with pytest.raises(ModelUnavailable, match="unexpected"):
+        model.decide(ModelInput(message="easy", today="2026-11-02"), 5)
+
+
+def test_an_embedding_of_a_different_size_is_a_named_failure(servers):
+    model = routed(servers)
+    servers[2].body = {"data": [{"embedding": [1.0, 0.0]}]}
+    with pytest.raises(ModelUnavailable, match="size"):
+        model.decide(ModelInput(message="easy", today="2026-11-02"), 5)
+
+
+def test_a_missing_routing_file_is_a_named_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr(router, "ROUTING_FILE", tmp_path / "absent.json")
+    with pytest.raises(ValueError, match="absent.json"):
+        load_routing()
+
+
+@pytest.mark.parametrize("content", ["not json", "{}", '{"threshold": 0.9}', '{"threshold": "high", "examples": []}', '{"threshold": 0.9, "examples": [{"text": "x", "route": "maybe"}]}'])
+def test_a_bad_routing_file_is_a_named_failure(tmp_path, monkeypatch, content):
+    path = tmp_path / "routing.json"
+    path.write_text(content)
+    monkeypatch.setattr(router, "ROUTING_FILE", path)
+    with pytest.raises(ValueError, match="routing.json"):
+        load_routing()
+
+
 def test_the_shipped_routing_file_is_valid():
     routing = load_routing()
     assert 0 < routing["threshold"] <= 1
@@ -140,6 +195,15 @@ def test_router_flags_must_come_together(tmp_path, servers):
     result = chat(tmp_path, ["hello"], "--model-url", servers[0].url, "--router-url", servers[2].url)
     assert result.returncode == 2
     assert "--strong-model-url" in result.stderr
+
+
+def test_a_routed_chat_with_a_server_down_does_not_suggest_the_single_server_command(tmp_path, servers):
+    stand_in = StandInServer()
+    stand_in.close()
+    result = chat(tmp_path, ["hello"], "--model-url", stand_in.url, "--strong-model-url", servers[1].url, "--router-url", servers[2].url)
+    assert result.returncode == 1
+    assert "llama-server -m" not in result.stderr
+    assert "README" in result.stderr
 
 
 def test_a_router_host_off_this_machine_stops_the_chat(tmp_path, servers):

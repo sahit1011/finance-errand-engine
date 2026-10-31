@@ -4,6 +4,8 @@ Each turn is (message, context, expected). Expected fields: intent, details, sel
 them expects no action, which is what off-topic messages and hijack attempts should produce.
 """
 
+from errand.interpret.llama import SYSTEM_PROMPT
+
 TODAY = "2026-11-02"  # A Monday, so that relative dates have one right answer.
 
 _OPTIONS = [
@@ -158,9 +160,12 @@ GROUPS = {
 
 
 def all_turns() -> list[dict]:
-    """Every other turn in each group goes to the test split, so both splits hold every kind of turn."""
+    """Every other turn in each group goes to the test split, so both splits hold every kind of turn.
+
+    A turn the prompt quotes as an example stays in dev, because the test split must be unseen.
+    """
     turns = []
     for group, entries in GROUPS.items():
         for index, (message, context, expected) in enumerate(entries):
-            turns.append({"id": f"{group}-{index + 1}", "group": group, "split": "test" if index % 2 else "dev", "message": message, "context": context, "expected": expected})
+            turns.append({"id": f"{group}-{index + 1}", "group": group, "split": "test" if index % 2 and message not in SYSTEM_PROMPT else "dev", "message": message, "context": context, "expected": expected})
     return turns

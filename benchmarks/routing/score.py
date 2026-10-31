@@ -20,15 +20,21 @@ def _memory_value(key: str, value: str) -> str:
     return normalise_value(key, value).lower()
 
 
-def canonical(actions: list[dict], workflow: str | None, today: date) -> dict:
+def _repeats(key: str, value, known: dict) -> bool:
+    """The engine applies only changed details, so repeating a value the run holds has no effect."""
+    return known.get(key) == (normalise_time(value) if key in ("earliest_time", "latest_time") else value)
+
+
+def canonical(actions: list[dict], context: dict, today: date) -> dict:
     """Reduces actions to what they mean. A clarification asks the user again, the same as no action."""
+    workflow, known = context.get("workflow"), context.get("details", {})
     found = {"intent": None, "details": {}, "select": None, "read": None, "memory": None}
     for action in actions:
         kind = action["type"]
         if kind == "set_intent" and action["intent"] != workflow:
             found["intent"] = action["intent"]
         elif kind == "update_details":
-            found["details"].update({key: _detail(key, value, today) for key, value in action["details"].items()})
+            found["details"].update({key: _detail(key, value, today) for key, value in action["details"].items() if not _repeats(key, value, known)})
         elif kind == "select_option":
             found["select"] = action["option"]
         elif kind == "request_read":
@@ -56,7 +62,7 @@ def score(raw: str, turn: dict, today: date) -> dict:
     """
     wanted = _expected(turn["expected"], today)
     try:
-        got = canonical(parse_output(raw).actions, turn["context"].get("workflow"), today)
+        got = canonical(parse_output(raw).actions, turn["context"], today)
     except (InvalidModelOutput, InvalidMemoryValue, ValueError) as error:
         return {"correct": False, "wrong_value": False, "rejected": str(error), "got": None}
     wrong_details = {key: value for key, value in got["details"].items() if key not in wanted["details"] or wanted["details"][key] != value}
