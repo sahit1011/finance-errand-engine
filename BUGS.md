@@ -64,3 +64,10 @@ Each entry is a failure that actually happened during the build, with the regres
 - **Why:** the stop was held on the `Turn` object, which lasts one message, so the promise made to the user could not survive to the moment it had to be kept.
 - **Fix:** the stop is saved on the run (`stop_requested` in `src/errand/core/domain.py`).
 - **Regression tests:** both `test_a_stop_given_while_the_outcome_is_unknown_*` tests in `tests/evals/test_model_paths.py`.
+
+## 10. "book it" approved a cancel
+
+- **What broke:** `test_words_naming_booking_cannot_approve_a_cancel` failed: with a cancel proposal showing, "book it" replied "Cancelled and verified". A fresh review found it while checking new Hindi words such as "book kar do", which widened an existing gap.
+- **Why:** intake reduced every confirmation to a plain yes, so the action the user named was lost before it could be compared with the action on the proposal.
+- **Fix:** a confirmation that names an action keeps that name, and it cannot confirm a different action (`names_action` in `src/errand/core/intake.py`, checked in `_answer_approval` in `src/errand/core/workflow.py`).
+- **Regression tests:** `test_words_naming_booking_cannot_approve_a_cancel` and `test_words_naming_booking_cannot_approve_a_reschedule` in `tests/evals/test_model_paths.py`.

@@ -135,7 +135,7 @@
   },
   {
    "text": "COLLECTING: the first booking",
-   "route": "cheap"
+   "route": "strong"
   },
   {
    "text": "PRESENTING: What do the reviews say about option 2?",
@@ -202,12 +202,44 @@
    "route": "none"
   },
   {
+   "text": "PRESENTING: I changed my mind, drop it all",
+   "route": "cheap"
+  },
+  {
+   "text": "COLLECTING: let's not do any of this",
+   "route": "cheap"
+  },
+  {
+   "text": "PRESENTING: bas, rehne do yaar",
+   "route": "cheap"
+  },
+  {
+   "text": "PRESENTING: actually I don't need a plumber any more",
+   "route": "cheap"
+  },
+  {
+   "text": "START: stop the leak under my sink",
+   "route": "cheap"
+  },
+  {
+   "text": "AWAITING_APPROVAL: not this one, show me the next one",
+   "route": "none"
+  },
+  {
+   "text": "PRESENTING: don't stop, I still want it, just cheaper",
+   "route": "none"
+  },
+  {
+   "text": "PRESENTING: drop the budget to 800",
+   "route": "cheap"
+  },
+  {
    "text": "START: kal subah plumber chahiye Koramangala mein",
    "route": "cheap"
   },
   {
    "text": "START: electrician bhejo Whitefield, budget 2000",
-   "route": "cheap"
+   "route": "strong"
   },
   {
    "text": "START: carpenter ko Shanivar ko shift kar do",

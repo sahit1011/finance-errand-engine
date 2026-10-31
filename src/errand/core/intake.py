@@ -1,6 +1,7 @@
 """Decides in code what a raw user message means when it is a bare answer or command. No model is involved."""
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from enum import Enum
 
@@ -22,12 +23,29 @@ class Intake:
     number: int | None = None
     key: str | None = None
     value: str | None = None
+    # Set when a confirmation names an action, so that it cannot confirm a different one.
+    names_action: str | None = None
 
 
 # Bare confirmations only. "yes, but make it 11" and "yes?" do not match, so neither can become an approval.
-_YES = {"yes", "y", "yeah", "yep", "ok", "okay", "sure", "confirm", "confirmed", "yes please", "yes confirm", "go ahead", "book it", "do it"}
-_NO = {"no", "n", "nope", "no thanks", "dont", "do not"}
-_STOP = {"stop", "never mind", "nevermind", "abandon", "cancel this", "forget it", "quit"}
+def _canonical(text: str) -> str:
+    """Hindi letters such as a nukta can be typed in more than one way, so both sides are compared in one form."""
+    return unicodedata.normalize("NFC", text)
+
+
+_YES = {
+    "yes", "y", "yeah", "yep", "ok", "okay", "sure", "confirm", "confirmed", "yes please", "yes confirm", "go ahead", "book it", "do it",
+    "please book it", "approve", "haan", "han", "haan ji", "ji haan", "theek hai", "thik hai", "bilkul", "kar do", "book kar do", "kar dijiye",
+    "हाँ", "हां", "हाँ जी", "हां जी", "जी हाँ", "जी हां", "ठीक है", "बिल्कुल", "बिलकुल", "कर दो",
+}
+_NAMES_BOOKING = {"book it", "please book it", "book kar do"}
+_NO = {"no", "n", "nope", "no thanks", "dont", "do not", "nahi", "nahin", "nahi chahiye", "mat karo", "नहीं", "नही", "मत करो"}
+# Models never run while a write is in flight, so a stop must be recognisable here to apply at that moment.
+_STOP = {
+    "stop", "never mind", "nevermind", "abandon", "cancel this", "forget it", "quit",
+    "ruk jao", "ruko", "rehne do", "chhodo", "chhod do", "band karo", "रुक जाओ", "रुको", "रहने दो", "छोड़ो", "छोड़ दो", "बंद करो",
+}
+_YES, _NO, _STOP = ({_canonical(word) for word in words} for words in (_YES, _NO, _STOP))
 _MEMORY_VIEW = {
     "what do you remember",
     "what do you remember about me",
@@ -50,15 +68,15 @@ _NUMBER = re.compile(r"^(?:option |number )?(\d+)$")
 
 
 def _normalise(text: str) -> str:
-    cleaned = text.strip().lower().replace("'", "")
+    cleaned = _canonical(text).strip().lower().replace("'", "")
     cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned.rstrip(".!, ")
+    return cleaned.rstrip(".!, ।")
 
 
 def classify(text: str) -> Intake:
     cleaned = _normalise(text)
     if cleaned in _YES:
-        return Intake(Kind.YES)
+        return Intake(Kind.YES, names_action="book" if cleaned in _NAMES_BOOKING else None)
     if cleaned in _NO:
         return Intake(Kind.NO)
     if cleaned in _STOP:

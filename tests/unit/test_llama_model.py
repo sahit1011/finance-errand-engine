@@ -129,6 +129,7 @@ def test_the_schema_offers_only_engine_actions_and_nothing_that_writes():
         {"actions": [{"type": "request_read", "tool": "get_provider", "option": 1}], "done": True},
         {"actions": [{"type": "propose_memory", "key": "area", "value": "whitefield"}], "done": True},
         {"actions": [{"type": "need_clarification"}], "done": True},
+        {"actions": [{"type": "stop"}], "done": True},
     ],
 )
 def test_each_shape_the_schema_describes_is_one_the_engine_parser_accepts(output):

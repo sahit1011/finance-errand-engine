@@ -1,6 +1,6 @@
 """Paths a third review found by tracing what a real model can send, which earlier scripted tests never tried."""
 
-from harness import details, find_plumber, intent
+from harness import details, find_plumber, intent, scenario
 from test_edge_cases import rehold_fails
 from test_slice2_safety import approval_statuses, to_proposal
 
@@ -363,3 +363,141 @@ def test_a_question_is_not_an_approval(env):
         assert "Please confirm" in reply
     assert env.world.ledger("book") == []
     assert approval_statuses(env) == ["pending"]
+
+
+# Replies in Hindi. Approval stays a code match, and a model can only ever stop an errand.
+
+
+@scenario(43, "Bare Hindi approval", "Approves the exact terms once in code, with no model; a condition or a question does not approve")
+def test_bare_hindi_approval(env):
+    to_proposal(env, book_outcomes=[OUTCOME_SUCCESS])
+    for text in ("haan?", "theek hai?"):
+        env.say(text, NOTHING)
+        assert env.world.ledger("book") == []
+    env.say("haan but after 11", details(earliest_time="11:00"))
+    assert env.world.ledger("book") == []
+    assert approval_statuses(env) == ["voided"]
+    env.say("1")
+    calls_before = len(env.model.inputs)
+    reply = env.say("haan")
+    assert len(env.model.inputs) == calls_before
+    assert len(env.world.ledger("book")) == 1
+    assert "Booked and verified" in reply
+    env.record.notes = "Questions and a condition did not approve; bare haan approved in code, with no model call and one booking"
+
+
+@scenario(44, "Stop understood by a model", "Abandons with the proposal voided and no write; a later yes approves nothing")
+def test_stop_understood_by_a_model(env):
+    to_proposal(env, book_outcomes=[OUTCOME_SUCCESS])
+    reply = env.say("I changed my mind, drop all of this", {"actions": [{"type": "stop"}], "done": True})
+    assert env.run().state == State.ABANDONED
+    assert approval_statuses(env) == ["voided"]
+    assert "Stopped" in reply
+    env.say("yes")
+    assert env.world.ledger("book") == []
+    env.record.notes = "The model's stop abandoned the run and voided the proposal; the later yes found nothing to approve"
+
+
+def test_a_hindi_stop_needs_no_model(env):
+    to_proposal(env, book_outcomes=[OUTCOME_SUCCESS])
+    calls_before = len(env.model.inputs)
+    env.say("ruk jao")
+    assert len(env.model.inputs) == calls_before
+    assert env.run().state == State.ABANDONED
+    assert approval_statuses(env) == ["voided"]
+
+
+def test_a_hindi_stop_applies_while_the_outcome_is_unknown(env):
+    env.start(Scenario(book_outcomes=[OUTCOME_TIMEOUT_NOT_BOOKED, OUTCOME_SUCCESS], faults={"get_booking_status": 6}))
+    env.say("Find a plumber", find_plumber())
+    env.say("1")
+    env.say("yes")
+    assert "takes effect once it is known" in env.say("rehne do")
+    env.say("ok")
+    assert env.world.ledger("book") == []
+    assert env.run().state == State.ABANDONED
+
+
+def test_a_hindi_no_declines_the_proposal(env):
+    to_proposal(env, book_outcomes=[OUTCOME_SUCCESS])
+    env.say("nahi")
+    assert approval_statuses(env) == ["voided"]
+    assert env.run().state == State.PRESENTING
+    assert env.world.ledger("book") == []
+
+
+def test_a_stop_mixed_with_other_actions_is_rejected_whole(env):
+    env.start()
+    env.say("Find a plumber", find_plumber())
+    bad = {"actions": [{"type": "stop"}, {"type": "update_details", "details": {"budget": 700}}], "done": True}
+    reply = env.say("stop, and make it 700", bad, bad)
+    assert "did not understand" in reply
+    assert env.run().state == State.PRESENTING
+    assert env.run().detail("budget") == 1500
+
+
+def test_a_model_stop_with_no_errand_says_so(env):
+    env.start()
+    reply = env.say("forget it all", {"actions": [{"type": "stop"}], "done": True})
+    assert "nothing in progress" in reply
+    assert env.run() is None
+
+
+def test_a_model_stop_during_a_reschedule_leaves_the_booking(env):
+    env.start(Scenario(seeded_bookings=[PLUMBER]))
+    env.say("Move my plumber", intent("reschedule", service="plumber", when="next_week", area="indiranagar"))
+    env.say("1")
+    env.say("drop this whole thing", {"actions": [{"type": "stop"}], "done": True})
+    assert env.world.ledger("reschedule") == []
+    assert env.run().state == State.ABANDONED
+    assert status_of(env, "b-p") == "confirmed"
+
+
+# A confirmation that names one action cannot approve a different one.
+
+
+def test_words_naming_booking_cannot_approve_a_cancel(env):
+    env.start(Scenario(seeded_bookings=[PLUMBER]))
+    env.say("Cancel my plumber", intent("cancel", service="plumber", area="indiranagar"))
+    for text in ("book it", "please book it", "book kar do"):
+        reply = env.say(text)
+        assert "Please confirm" in reply and "Cancel" in reply
+        assert env.world.ledger("cancel") == []
+        assert status_of(env, "b-p") == "confirmed"
+    assert approval_statuses(env) == ["pending"]
+    env.say("yes")
+    assert status_of(env, "b-p") == "cancelled"
+
+
+def test_words_naming_booking_cannot_approve_a_reschedule(env):
+    env.start(Scenario(seeded_bookings=[PLUMBER]))
+    env.say("Move my plumber", intent("reschedule", service="plumber", when="next_week", area="indiranagar"))
+    env.say("1")
+    env.say("book it")
+    assert env.world.ledger("reschedule") == []
+    assert approval_statuses(env) == ["pending"]
+
+
+def test_words_naming_booking_do_approve_a_booking(env):
+    to_proposal(env, book_outcomes=[OUTCOME_SUCCESS])
+    env.say("book kar do")
+    assert len(env.world.ledger("book")) == 1
+
+
+def test_a_hindi_stop_with_a_danda_prevents_the_retry_while_the_outcome_is_unknown(env):
+    env.start(Scenario(book_outcomes=[OUTCOME_TIMEOUT_NOT_BOOKED, OUTCOME_SUCCESS], faults={"get_booking_status": 3}))
+    env.say("Find a plumber", find_plumber())
+    env.say("1")
+    env.say("yes")
+    env.say("रुक जाओ।")
+    assert env.world.ledger("book") == []
+    assert env.run().state == State.ABANDONED
+
+
+def test_a_model_that_keeps_going_after_a_stop_is_not_called_again(env):
+    to_proposal(env, book_outcomes=[OUTCOME_SUCCESS])
+    calls = len(env.model.inputs)
+    reply = env.say("drop it all", {"actions": [{"type": "stop"}], "done": False}, {"actions": [{"type": "stop"}], "done": True})
+    assert len(env.model.inputs) == calls + 1
+    assert env.run().state == State.ABANDONED
+    assert "went wrong" not in reply

@@ -1,6 +1,7 @@
 """The model interface: models turn user text into structured actions and can do nothing else.
 
 No action type exists for hold, book, cancel, reschedule or approve, so a hijacked model has nothing to ask for.
+The one action with an effect of its own is stop, which spends nothing: the worst a wrong stop can do is end an errand.
 """
 
 import json
@@ -20,6 +21,7 @@ ACTION_FIELDS = {
     "request_read": {"tool", "option"},
     "propose_memory": {"key", "value"},
     "need_clarification": set(),
+    "stop": set(),
 }
 
 

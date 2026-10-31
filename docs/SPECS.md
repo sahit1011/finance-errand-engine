@@ -46,7 +46,10 @@ Two more moves are left out of the picture for readability. `COLLECTING`, `SEARC
 a per-run cap is reached. Moving to `FAILED` or `ABANDONED` voids any pending proposal and clears the
 pending question in the same transaction, so a later "yes" finds nothing to approve.
 
-Intake matches a bare stop, such as "stop" or "never mind", in code. A write in flight cannot be
+Intake matches a bare stop in code, such as "stop", "never mind", "ruk jao" or "rehne do". Any other phrasing goes to the
+model, which may return a `stop` action, alone in its output. That is the one action with an effect of its own, and it spends
+nothing: the worst a wrong stop can do is end an errand. Models never run while a write is in flight, so at that moment
+only the phrases in code are recognised. A write in flight cannot be
 abandoned, so a stop in `UNKNOWN_NEEDS_CHECK` rechecks status without retrying, and the stop is saved on the run so it
 still applies after a later message or a restart. If booked, the booking is
 reported and a cancel is offered. If `not_found` or `failed`, the approval is voided and the run moves to
@@ -97,15 +100,16 @@ affects a pending proposal, the proposal is voided. Budget and time filtering ha
   exists, so they never replace an approval question. A memory command during a pending approval shows
   the proposal again, unless the command voided it.
 - **What counts as approval:** the raw user message, matched by code against a short list of bare
-  confirmations such as "yes" or "confirm", while the pending question is `approval`. No model sees this
-  decision.
+  confirmations in English and Hindi, such as "yes", "confirm", "haan" or "theek hai", while the pending question is
+  `approval`. No model sees this decision. A reply in another language re-shows the proposal. A confirmation that
+  names booking, such as "book it", cannot confirm a cancel or a reschedule.
 - **No stale approvals:** a "yes" counts only if it was sent after that proposal was shown. Each message
   carries the id of the last reply the client displayed, and the CLI discards typed-ahead input before
   prompting. A queued "yes" therefore cannot approve a new price the user has not seen.
 - **What does not count:** "yes, but make it 11" goes to the model as a correction, and so does a question such
   as "yes?" or "book it?". A bare "yes" with nothing pending is settled in code: it reports current status and does
   nothing else.
-- **What "no" does:** a bare rejection, also matched by code, voids the proposal. Rejecting a cancel
+- **What "no" does:** a bare rejection, also matched by code in English or Hindi, voids the proposal. Rejecting a cancel
   ends the run and keeps the booking.
 - **The record:** approval id, run, user, action, provider, slot, price, booking id if any, source
   message id, status and idempotency key.
@@ -299,23 +303,25 @@ These invariants run after every scenario:
 | 40 | Stop in `UNKNOWN_NEEDS_CHECK` | No retry; booked is reported, while `not_found` voids and abandons | |
 | 41 | Forget during an in-flight write | No retry using the forgotten value; a confirmed booking is still reported | Yes |
 | 42 | Seeded cancel with no price available | No approval or write; run moves to `FAILED`; booking unchanged | |
+| 43 | Bare Hindi approval | Approves the exact terms once in code, with no model; a condition or a question does not approve | |
+| 44 | Stop understood by a model | Abandons with the proposal voided and no write; a later "yes" approves nothing | |
 
 ## Live model
 
 `errand chat` talks only to `llama-server` processes on this machine: one by default, three when routing.
 
 - **Local only:** a model URL that is not plain `http` to a loopback address is refused before any connection. The client uses `http.client`, which ignores proxy settings and follows no redirects.
-- **Shape of the output:** llama.cpp compiles a JSON schema into a grammar, so a live model cannot write an action outside the list above. Two choices in that schema came from real failures, recorded in `BUGS.md`: each detail is its own action, and `done` is fixed to true.
+- **Shape of the output:** llama.cpp compiles a JSON schema into a grammar, so a live model cannot write an action outside the list in [the architecture](ARCHITECTURE.md#interpretation-interface). Two choices in that schema came from real failures, recorded in `BUGS.md`: each detail is its own action, and `done` is fixed to true.
 - **Not offered to a live model:** `list_bookings`. The engine reads bookings itself, and the result would reach only the model, which cannot speak to the user.
 - **All or nothing:** every action in an output is checked before any applies, so a rejected output changes nothing. It may hold one selection and one intent at most.
 - **Settings:** temperature 0, thinking off, at most 512 output tokens. These are our choices.
 
-Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 9B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`, over the 102 benchmark turns:
+Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 9B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`, over the 118 benchmark turns:
 
 | Measure | Value |
 | --- | --- |
-| Latency per model call | p50 2.23 s, p95 6.17 s, max 9.56 s |
-| Largest prompt and output | 1,331 and 106 tokens |
+| Latency per model call | p50 1.97 s, p95 5.21 s, max 7.71 s |
+| Largest prompt and output | 1,411 and 106 tokens |
 | Server memory | See [the routing results](../benchmarks/routing/results.md) |
 
 The slowest call seen is far below the 120-second turn cap, so the cap stays. Its job is to stop a stuck model, not to pace a normal one. When routing, the router's time counts against the same cap.
@@ -331,13 +337,13 @@ no LLM, the cheap LLM or the strong LLM. Bare answers are settled in code first,
 - **LLMs:** Qwen3.5 4B as cheap and Qwen3.5 9B as strong.
 - **What it can do:** only pick a route. It cannot approve anything, and it sees no review text.
 
-**Result:** on 47 held-out turns, the router got 42 right with 3 wrong values, and 4B and 9B alone got 41 each with 4,
-with the router using about 13% less compute than 9B. That is within noise. A perfect router would reach 45, so the room
-is real, but this router does not capture it. Across all 102 turns, 9B got 95 and 4B got 91, and 9B's clearest edge is small
-talk, where it took no action on 10 of 10 and 4B on 5. So we recommend running 9B alone, on modest evidence. The cheap LLM
-routing itself was the worst option, because it sent most turns to the strong LLM after spending its own time. Laya was a candidate but
-is not measured: running its package was blocked by a permission check on this machine. Full tables are in
-[benchmarks/routing/results.md](../benchmarks/routing/results.md).
+**Result:** on 55 held-out turns, 9B got 50 right and 4B got 49, each with 4 wrong values. The router got 47 with 4 wrong
+values, below either model alone, while using about 17% less compute than 9B. A perfect router would reach 53, so the room
+is real, but this router does not capture it, and its `none` route can drop a real stop. Across all 118 turns, 9B got 109 with
+6 wrong values and 4B got 102 with 13. 4B also returned 3 false stops, where 9B returned none. Two had no errand to end, and
+one ended a live errand on "Looks perfect, thanks" with a proposal showing. So we recommend running 9B alone. The cheap LLM routing itself got 45, the worst, because it
+sent most turns to the strong LLM after spending its own time. Laya is not measured: running its package was blocked by a
+permission check on this machine. Full tables are in [benchmarks/routing/results.md](../benchmarks/routing/results.md).
 
 **A model does not decide approval.** The assignment says approval is "not something inferred from model output", and the
 measurement agrees: on 57 replies that must not approve, the LLMs wrongly approved 4 and 7, including

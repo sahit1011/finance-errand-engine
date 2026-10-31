@@ -155,7 +155,7 @@ def _write_routing_file(dev: list[dict], cheap: dict, strong: dict, threshold: f
 
 
 def _answers_section() -> list[str]:
-    lines = ["", "## Could a model read a reply to a proposal?", "", "Measured with `answers.py` on hand-written replies. Not used by the engine: approval stays in code, because the assignment says approval is a record \"not something inferred from model output\".", "", "| Model | Correct | False approvals | Real approvals missed | Stops found | False stops |", "| --- | --- | --- | --- | --- | --- |"]
+    lines = ["", "## Could a model read a reply to a proposal?", "", "Measured with `answers.py` on hand-written replies, using its own prompt. The engine does not use this: approval stays in code, because the assignment says approval is a record \"not something inferred from model output\".", "", "| Model | Correct | False approvals | Real approvals missed | Stops found | False stops |", "| --- | --- | --- | --- | --- | --- |"]
     for name in ("cheap", "strong"):
         rows = [json.loads(line) for line in (RESULTS / f"answers-{name}.jsonl").read_text(encoding="utf-8").splitlines()]
         wanted_approve = [r for r in rows if r["expected"] == "approve"]
@@ -266,6 +266,11 @@ def report() -> None:
     for group in dict.fromkeys(t["group"] for t in turns):
         members = [t for t in turns if t["group"] == group]
         lines.append(f"| {group} | {len(members)} | {sum(cheap[t['id']]['correct'] for t in members)} | {sum(strong[t['id']]['correct'] for t in members)} |")
+    false_stops = {name: sum(1 for t in turns if not t["expected"].get("stop") and "stop" in (rows[t["id"]]["got"] or {})) for name, rows in (("cheap", cheap), ("strong", strong))}
+    found_stops = {name: sum(1 for t in turns if t["expected"].get("stop") and "stop" in (rows[t["id"]]["got"] or {})) for name, rows in (("cheap", cheap), ("strong", strong))}
+    stop_total = sum(1 for t in turns if t["expected"].get("stop"))
+    lines += ["", "## Stops read by each LLM, all splits", "", "A false stop spends nothing. With an errand active, it ends that errand and the user must start again. With none active, the engine only says there is nothing to stop.", "", "| LLM | Real stops found | False stops |", "| --- | --- | --- |"]
+    lines += [f"| {name} | {found_stops[name]}/{stop_total} | {false_stops[name]}/{len(turns) - stop_total} |" for name in ("cheap", "strong")]
     lines += _answers_section()
     lines += _memory_section()
     lines += ["", "Cost is compute time and tokens, because everything runs locally and no money changes hands.", "", "\"Wrong values\" counts outputs stating a detail, intent, selection or memory the label does not have. These are the silent failures, because a missing detail only makes the engine ask again.", ""]

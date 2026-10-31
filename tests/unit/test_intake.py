@@ -16,6 +16,26 @@ def test_anything_more_than_a_bare_confirmation_is_not_yes(text):
     assert classify(text).kind == Kind.OTHER
 
 
+@pytest.mark.parametrize("text", ["haan", "han", "Haan ji.", "ji haan", "theek hai", "thik hai!", "bilkul", "kar do", "book kar do", "kar dijiye", "please book it", "approve", "हाँ", "हां", "हाँ जी", "हां जी", "जी हाँ", "ठीक है", "बिल्कुल", "बिलकुल", "कर दो", "हाँ।", "ठीक है।"])
+def test_bare_hindi_and_plain_confirmations_are_yes(text):
+    assert classify(text).kind == Kind.YES
+
+
+@pytest.mark.parametrize("text", ["haan but after 11", "theek hai but cheaper", "haan lekin kal", "theek hai?", "haan?", "kya yeh theek hai", "please book it for next week", "book kar do kal", "approve the other one", "हाँ लेकिन कल"])
+def test_hindi_with_anything_more_is_not_a_confirmation(text):
+    assert classify(text).kind == Kind.OTHER
+
+
+@pytest.mark.parametrize("text", ["nahi", "Nahin.", "nahi chahiye", "mat karo", "नहीं", "नही", "मत करो", "नहीं।"])
+def test_bare_hindi_rejections_are_no(text):
+    assert classify(text).kind == Kind.NO
+
+
+@pytest.mark.parametrize("text", ["ruk jao", "ruko", "Rehne do.", "chhodo", "chhod do", "band karo", "रुक जाओ", "रुको", "रहने दो", "छोड़ो", "छोड़ दो", "बंद करो", "रुक जाओ।", "रहने दो।", "stop।", "\u091b\u094b\u095c\u094b", "\u091b\u094b\u0921\u093c\u094b"])
+def test_common_hindi_stops_are_settled_in_code(text):
+    assert classify(text).kind == Kind.STOP
+
+
 @pytest.mark.parametrize("text", ["yes?", "ok?", "book it?", "Go ahead?", "confirm?"])
 def test_a_question_is_not_a_confirmation(text):
     assert classify(text).kind == Kind.OTHER
@@ -44,6 +64,16 @@ def test_cancel_alone_is_not_a_stop_because_it_may_mean_cancel_a_booking():
 def test_numbers_select_options(text, number):
     intake = classify(text)
     assert (intake.kind, intake.number) == (Kind.NUMBER, number)
+
+
+@pytest.mark.parametrize("text", ["book it", "please book it", "book kar do"])
+def test_a_confirmation_naming_booking_says_so(text):
+    assert classify(text).names_action == "book"
+
+
+@pytest.mark.parametrize("text", ["yes", "haan", "go ahead", "approve", "kar do"])
+def test_a_plain_confirmation_names_no_action(text):
+    assert classify(text).names_action is None
 
 
 def test_forget_names_the_fact():

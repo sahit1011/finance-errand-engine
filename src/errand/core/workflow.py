@@ -49,7 +49,7 @@ class Workflow:
                 self.advance(turn)
             return
         if intake.kind in (Kind.YES, Kind.NO):
-            self._answer(turn, intake.kind == Kind.YES, last_reply_id)
+            self._answer(turn, intake, last_reply_id)
         elif intake.kind == Kind.STOP:
             self._stop(turn)
         elif intake.kind == Kind.NUMBER and run is not None and (run.options or run.booking_choices):
@@ -134,14 +134,15 @@ class Workflow:
 
     # Bare answers and commands, settled in code.
 
-    def _answer(self, turn: Turn, yes: bool, last_reply_id: int | None) -> None:
+    def _answer(self, turn: Turn, intake, last_reply_id: int | None) -> None:
         run = turn.run
+        yes = intake.kind == Kind.YES
         question = run.pending_question if run is not None else None
         if question is None:
             turn.say(render.status(run if run is not None else self.store.latest_run(turn.user_id)))
             return
         if question["kind"] == "approval":
-            self._answer_approval(turn, run, question["approval_id"], yes, last_reply_id)
+            self._answer_approval(turn, run, question["approval_id"], intake, last_reply_id)
         elif question["kind"] == "memory_confirm":
             run.pending_question = None
             if yes:
@@ -158,9 +159,9 @@ class Workflow:
                 move(self.store, turn.tracer, run, State.ABANDONED, "user declined a second booking")
                 turn.say("Okay, I have not booked anything new.")
 
-    def _answer_approval(self, turn: Turn, run: Run, approval_id: str, yes: bool, last_reply_id: int | None) -> None:
+    def _answer_approval(self, turn: Turn, run: Run, approval_id: str, intake, last_reply_id: int | None) -> None:
         approval = self.store.approval(approval_id)
-        if not yes:
+        if intake.kind != Kind.YES:
             with self.store.tx():
                 void(self.store, turn.tracer, run, approval_id, "user said no")
                 target = State.ABANDONED if run.workflow == "cancel" else State.PRESENTING
@@ -168,6 +169,10 @@ class Workflow:
             if run.workflow == "cancel":
                 turn.say("Okay, your booking stays as it is.")
                 return
+            self.advance(turn)
+            return
+        if intake.names_action is not None and intake.names_action != approval.action:
+            turn.say(f"That sounds like a {intake.names_action}, and this is not one, so I have not acted on it.")
             self.advance(turn)
             return
         if approval.shown_reply_id is None or approval.shown_reply_id != last_reply_id:
@@ -274,7 +279,8 @@ class Workflow:
                     turn.say("Sorry, I did not understand that. Could you say it another way?")
                     return
                 continue
-            if output.done:
+            # A stop ends the turn even if a model asks to continue, because nothing is left to continue.
+            if output.done or any(action["type"] == "stop" for action in output.actions):
                 if turn.run is None and not turn.lines:
                     turn.say("I can book, reschedule or cancel home services. What would you like to do?")
                 return
@@ -300,6 +306,8 @@ class Workflow:
             raise InvalidModelOutput(f"more than one intent: {sorted(intents)}")
         if sum(a["type"] == "select_option" for a in actions) > 1:
             raise InvalidModelOutput("more than one selection")
+        if len(actions) > 1 and any(a["type"] == "stop" for a in actions):
+            raise InvalidModelOutput("a stop mixed with other actions")
         for action in actions:
             kind = action["type"]
             if kind == "update_details":
@@ -352,6 +360,8 @@ class Workflow:
             self.memory.propose_from_model(turn, turn.run, action["key"], action["value"])
         elif kind == "need_clarification":
             turn.say("Could you tell me a little more?")
+        elif kind == "stop":
+            self._stop(turn)
 
     def _set_intent(self, turn: Turn, intent: str) -> None:
         if turn.run is not None:

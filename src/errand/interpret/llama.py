@@ -47,6 +47,8 @@ Actions:
 - propose_memory: only if the person asks to keep something, with words like always, remember or from now on.
   key is area, earliest_time or preferred_technician, and value comes from the message.
 - need_clarification: the message is about the errand, but you cannot tell what it means.
+- stop: the person wants to abandon this whole errand, in any language. It is the only action in the output. A
+  rejection of one option, a correction, or a request to cancel a booking is not a stop.
 
 If the message is not about an errand, return no actions. Always set done to true.
 
@@ -69,6 +71,8 @@ Examples of message and output:
 {"actions":[{"type":"request_read","tool":"get_provider","option":2}],"done":true}
 "I always want morning visits after 9 am"
 {"actions":[{"type":"propose_memory","key":"earliest_time","value":"9 am"}],"done":true}
+"I no longer need any of this, leave it" with a workflow already set
+{"actions":[{"type":"stop"}],"done":true}
 "What is the weather like?"
 {"actions":[],"done":true}"""
 
@@ -106,6 +110,7 @@ def output_schema() -> dict:
         _action("request_read", tool={"const": "get_provider"}, option=option_number),
         _action("propose_memory", key={"enum": list(MEMORY_KEYS)}, value={"type": "string"}),
         _action("need_clarification"),
+        _action("stop"),
     ]
     return {
         "type": "object",

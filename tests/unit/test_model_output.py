@@ -34,6 +34,7 @@ def test_json_text_parses():
         {"actions": [{"type": "request_read", "tool": "book"}]},
         {"actions": [{"type": "propose_memory", "key": "password", "value": "x"}]},
         {"actions": [], "done": "yes"},
+        {"actions": [{"type": "stop", "approved": True}]},
     ],
 )
 def test_anything_outside_the_schema_is_rejected(raw):
