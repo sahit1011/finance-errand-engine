@@ -25,7 +25,7 @@ class ScriptedModel:
         # A callable output can act on the world first, such as advancing a fake clock, then return raw output.
         if callable(output):
             output = output(model_input)
-        return ModelReply(raw=output)
+        return ModelReply(raw=output, served_by=self.name)
 
 
 class LoopingModel:
@@ -38,4 +38,4 @@ class LoopingModel:
 
     def decide(self, model_input: ModelInput, timeout_seconds: float) -> ModelReply:
         self.inputs.append(model_input)
-        return ModelReply(raw={"actions": [], "done": False})
+        return ModelReply(raw={"actions": [], "done": False}, served_by=self.name)

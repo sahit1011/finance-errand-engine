@@ -230,7 +230,7 @@ def test_the_model_is_told_the_remaining_time(env):
 
         def decide(self, model_input, timeout_seconds):
             seen.append(timeout_seconds)
-            return ModelReply(raw={"actions": [], "done": True})
+            return ModelReply(raw={"actions": [], "done": True}, served_by=self.name)
 
     env.start(model=TimingModel())
     env.say("hello")

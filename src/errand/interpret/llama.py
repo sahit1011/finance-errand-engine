@@ -159,11 +159,19 @@ class LlamaModel:
         try:
             return ModelReply(
                 raw=body["choices"][0]["message"]["content"],
+                served_by=self.name,
                 prompt_tokens=body["usage"]["prompt_tokens"],
                 completion_tokens=body["usage"]["completion_tokens"],
                 compute_seconds=(body["timings"]["prompt_ms"] + body["timings"]["predicted_ms"]) / 1000,
             )
         except (KeyError, IndexError, TypeError) as error:
+            raise ModelUnavailable(f"{self.address} sent an unexpected response: {error!r}") from error
+
+    def embed(self, text: str, timeout_seconds: float) -> list[float]:
+        data = self._request("POST", "/v1/embeddings", json.dumps({"input": text}), timeout_seconds)
+        try:
+            return json.loads(data)["data"][0]["embedding"]
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
             raise ModelUnavailable(f"{self.address} sent an unexpected response: {error!r}") from error
 
     def _request(self, method: str, path: str, body: str | None, timeout_seconds: float) -> bytes:

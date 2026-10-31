@@ -1,0 +1,20 @@
+{
+ "how": "From `/usr/bin/time -l` on each server when it stopped, in the second of two runs (Apple M5, 16 GB, `--ctx-size 8192`). Model files are memory-mapped, so these numbers move with memory pressure: in the first run the 4B server showed 1,873 MB resident and 1,436 MB footprint, and alone it showed 3,337 MB and 1,266 MB. The three files total 8.7 GB, so treat that as the real need. All three ran together, and free memory reported by `memory_pressure` fell to 14% at its lowest reading.",
+ "servers": [
+  {
+   "server": "Qwen3.5 4B Q4_K_M (cheap)",
+   "resident_mb": 3081,
+   "footprint_mb": 695
+  },
+  {
+   "server": "Qwen3.5 9B Q4_K_M (strong)",
+   "resident_mb": 2792,
+   "footprint_mb": 676
+  },
+  {
+   "server": "EmbeddingGemma 2 Q8_0 (router)",
+   "resident_mb": 458,
+   "footprint_mb": 174
+  }
+ ]
+}

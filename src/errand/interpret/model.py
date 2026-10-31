@@ -44,6 +44,8 @@ class ModelInput:
 @dataclass
 class ModelReply:
     raw: object
+    # Which model produced this, so a trace shows the route a router took.
+    served_by: str
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     compute_seconds: float | None = None

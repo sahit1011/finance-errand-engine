@@ -37,15 +37,17 @@ class StandInServer:
                 if outer.hang.is_set():
                     outer.release.wait(5)
                 try:
-                    self._answer()
+                    self._answer(outer.requests[-1])
                 except (BrokenPipeError, ConnectionResetError):
                     pass  # The client gave up waiting, which is what a hang test is about.
 
             def do_GET(self):
                 self._answer()
 
-            def _answer(self):
-                body = outer.body if isinstance(outer.body, bytes) else json.dumps(outer.body).encode()
+            def _answer(self, request=None):
+                # A callable body answers each request by its content, and a health check gets a plain ok.
+                answer = (outer.body(request) if request else {"status": "ok"}) if callable(outer.body) else outer.body
+                body = answer if isinstance(answer, bytes) else json.dumps(answer).encode()
                 self.send_response(outer.status)
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()

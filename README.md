@@ -36,19 +36,19 @@ To watch traces live in a second terminal, run `uv run errand trace`.
 
 ## Chat with a local model
 
-Chat needs macOS or Linux, llama.cpp, and one 2.74 GB model file ([Qwen3.5 4B](https://huggingface.co/Qwen/Qwen3.5-4B), Apache 2.0). Your messages stay on this machine: the agent refuses a model server anywhere else.
+Chat needs macOS or Linux, llama.cpp, and one 5.68 GB model file ([Qwen3.5 9B](https://huggingface.co/Qwen/Qwen3.5-9B), Apache 2.0). Your messages stay on this machine: the agent refuses a model server anywhere else.
 
 ```sh
 brew install llama.cpp
-mkdir -p ~/models/qwen3.5-4b
-curl -L -o ~/models/qwen3.5-4b/Qwen3.5-4B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/main/Qwen3.5-4B-Q4_K_M.gguf
+mkdir -p ~/models/qwen3.5-9b
+curl -L -o ~/models/qwen3.5-9b/Qwen3.5-9B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf
 ```
 
 Then use three terminals:
 
 ```sh
 # 1. The model server
-llama-server -m ~/models/qwen3.5-4b/Qwen3.5-4B-Q4_K_M.gguf --host 127.0.0.1 --port 8080 --ctx-size 8192 --parallel 1 --no-webui
+llama-server -m ~/models/qwen3.5-9b/Qwen3.5-9B-Q4_K_M.gguf --host 127.0.0.1 --port 8080 --ctx-size 8192 --parallel 1 --no-webui
 
 # 2. The chat. Ctrl-D leaves, and your errand and memory are saved.
 uv run errand chat
@@ -66,9 +66,13 @@ uv run errand trace --dir traces/failure
 
 The outcomes are `success`, `slot_taken`, `timeout_booked` and `timeout_not_booked`. Each session keeps its state in `.errand/<session>/` and its traces in `traces/<session>/`.
 
-## Not built yet
+## Model routing
 
-Model routing and the design note. See [the development plan](docs/DEVELOPMENT_PLAN.md).
+Routing sends each message to no LLM, a cheap LLM or a strong one. We measured it and recommend the single 9B server above: the router tied 9B alone on quality and saved about 8% of compute, which is within noise. See [the results](benchmarks/routing/results.md). To try it, also download [Qwen3.5 4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF) and [EmbeddingGemma 2](https://huggingface.co/ggml-org/embeddinggemma-2-GGUF), run a server for each on ports 8080 (4B), 8081 (9B) and 8082 (EmbeddingGemma, with `--embeddings`), then:
+
+```sh
+uv run errand chat --model-url http://127.0.0.1:8080 --strong-model-url http://127.0.0.1:8081 --router-url http://127.0.0.1:8082
+```
 
 ## Documents
 

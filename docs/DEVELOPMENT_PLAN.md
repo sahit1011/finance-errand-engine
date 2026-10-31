@@ -3,7 +3,7 @@
 We build eight vertical slices, and each ends in something runnable with its own proof. Core work comes
 first and needs no installs. Model work comes after the must-haves are solid, as the assignment asks.
 
-Slices 1-6 are built. Slices 7 and 8 are not finished.
+Slices 1-7 are built. Slice 8 is in progress.
 
 ## Slices
 
@@ -52,12 +52,11 @@ Only the rendered PNGs in [diagrams/](diagrams/) are in this repo.
 
 | Risk | What we know so far | How we find out |
 | --- | --- | --- |
-| Memory limit | The Mac has 16 GB; Qwen3.5 4B measured 3.50 GB maximum resident; 9B and a router are not measured | Measure in slice 7 |
-| Model files | Qwen3.5 4B is downloaded and its checksum matches; 9B is unconfirmed | Check its model card before downloading |
-| Licences | Qwen3.5 4B's LICENSE file is Apache 2.0; the others are not confirmed | Check model cards before downloading |
-| llama.cpp version | EmbeddingGemma 2 needs a recent build; 0.8.0 is installed | Load it in slice 7 |
+| Memory limit | The Mac has 16 GB; all three models ran together, with free memory down to 14%; the files total 8.7 GB | Measured in slice 7 |
+| Model files | All three are downloaded and their checksums match | Done |
+| Licences | Both Qwen3.5 LICENSE files are Apache 2.0; EmbeddingGemma 2's model card and Laya's README say Apache 2.0 | Done |
 | Reviewer setup | The 3-command setup relies on `uv`, which reviewers may not have | README lists it as the one prerequisite |
-| Laya accuracy | One synthetic benchmark put its general checkpoint below baseline, and its confidence needs calibrating | Router comparison in slice 7 |
+| Laya accuracy | Not measured: running its package was blocked by a permission check on this machine | Allow it, then add it to the comparison |
 | Python version | The default here is 3.14; 3.12 is available and will be pinned | First install in slice 1 |
 
 ## Sources

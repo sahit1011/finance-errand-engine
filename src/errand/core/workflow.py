@@ -251,7 +251,7 @@ class Workflow:
             reply = self.model.decide(model_input, turn.budget.remaining_seconds())
             turn.tracer.event(
                 "model_call",
-                model=self.model.name,
+                model=reply.served_by,
                 input=model_input.to_dict(),
                 raw_output=reply.raw,
                 latency_ms=round((time.perf_counter() - started) * 1000, 2),

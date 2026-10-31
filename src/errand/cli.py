@@ -13,6 +13,7 @@ from errand.demos import DEMOS, run_demo
 from errand.infra.clock import SystemClock
 from errand.infra.store import Store
 from errand.interpret.llama import LlamaModel
+from errand.interpret.router import RoutedModel, load_routing
 from errand.mock.world import OUTCOME_SLOT_TAKEN, OUTCOME_SUCCESS, OUTCOME_TIMEOUT_BOOKED, OUTCOME_TIMEOUT_NOT_BOOKED, MockWorld, Scenario
 from errand.runner import Engine
 
@@ -22,7 +23,7 @@ DATA_ROOT = Path(".errand")
 CHAT_USER = "user-1"
 # Uses the port in LLAMA_SERVER_COMMAND below, which the README repeats.
 DEFAULT_MODEL_URL = "http://127.0.0.1:8080"
-LLAMA_SERVER_COMMAND = "llama-server -m ~/models/qwen3.5-4b/Qwen3.5-4B-Q4_K_M.gguf --host 127.0.0.1 --port 8080 --ctx-size 8192 --parallel 1 --no-webui"
+LLAMA_SERVER_COMMAND = "llama-server -m ~/models/qwen3.5-9b/Qwen3.5-9B-Q4_K_M.gguf --host 127.0.0.1 --port 8080 --ctx-size 8192 --parallel 1 --no-webui"
 BOOK_OUTCOMES = (OUTCOME_SUCCESS, OUTCOME_SLOT_TAKEN, OUTCOME_TIMEOUT_BOOKED, OUTCOME_TIMEOUT_NOT_BOOKED)
 
 
@@ -88,8 +89,13 @@ def _discard_typed_ahead() -> bool:
 
 
 def _chat_command(args: argparse.Namespace) -> int:
+    if bool(args.strong_model_url) != bool(args.router_url):
+        print("Cannot start: --strong-model-url and --router-url go together.", file=sys.stderr)
+        return 2
     try:
         model = LlamaModel(args.model_url)
+        if args.router_url:
+            model = RoutedModel(model, LlamaModel(args.strong_model_url), LlamaModel(args.router_url), load_routing())
     except ValueError as error:
         print(f"Cannot start: {error}", file=sys.stderr)
         return 2
@@ -140,6 +146,8 @@ def main() -> int:
 
     chat = commands.add_parser("chat", help="chat with the agent, using a local model server")
     chat.add_argument("--model-url", default=DEFAULT_MODEL_URL)
+    chat.add_argument("--strong-model-url", help="with --router-url, also use a stronger model for hard messages")
+    chat.add_argument("--router-url", help="an embedding server that picks the model for each message")
     chat.add_argument("--session", type=_session_name, default="default", help="a name that keeps this session's state and traces apart")
     chat.add_argument("--book-outcome", action="append", default=[], choices=BOOK_OUTCOMES, help="force the next book call's outcome, for showing a failure live; needs a new session")
 
