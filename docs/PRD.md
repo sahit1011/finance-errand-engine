@@ -17,7 +17,8 @@ this repo.
 | Eval model | Scripted, never live | Required by must-have 8 |
 | Nice-to-have | Model routing, built last | The spec allows at most one; this one matches our interest in decision models |
 | Tool contract | Unchanged | The spec calls it fixed |
-| Demo | Two terminal panes: chat and live trace | Meets the side-by-side requirement |
+| Demo | Local web app: chat beside the live workflow | Meets the side-by-side requirement, and is easier to follow than two terminals |
+| Web app | Plain Python server and one page, no new dependencies | Not required by the assignment; added so results and runs can be seen, not only read |
 | Planning | No scope cuts for the 10-12 hour time box | Our choice; the 5-day submission window still applies |
 
 ## Problem
@@ -42,7 +43,7 @@ the process crashes or a review contains hostile instructions.
 ## Non-goals
 
 - Real providers, payments or external services.
-- Multi-user accounts, login or a web interface.
+- Multi-user accounts, login or a hosted app. The web app serves one user on their own machine.
 - Proactive follow-up, because the spec allows only one nice-to-have.
 
 ## User journeys

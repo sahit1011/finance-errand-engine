@@ -222,6 +222,41 @@ def _row(name: str, result: dict) -> str:
     return f"| {name} | {result['correct']}/{result['total']} | {result['wrong']} | {result['p50']:.2f} | {result['p95']:.2f} | {result['compute']:.1f} | {result['tokens']:,} | {routes} |"
 
 
+def _answer_rows() -> list[dict]:
+    rows = []
+    for name in ("cheap", "strong"):
+        replies = [json.loads(line) for line in (RESULTS / f"answers-{name}.jsonl").read_text(encoding="utf-8").splitlines()]
+        wanted = [r for r in replies if r["expected"] == "approve"]
+        others = [r for r in replies if r["expected"] != "approve"]
+        rows.append({
+            "model": name,
+            "false_approvals": sum(r["decision"] == "approve" for r in others),
+            "must_not_approve": len(others),
+            "missed_approvals": sum(r["decision"] != "approve" for r in wanted),
+            "real_approvals": len(wanted),
+            "wrongly_approved": [r["reply"] for r in others if r["decision"] == "approve"],
+        })
+    return rows
+
+
+def _write_json(turns, test, dev, pipelines, cheap, strong, found_stops, false_stops, stop_total) -> None:
+    """The same numbers as results.md, for the Results page."""
+
+    def rows(split):
+        return [{"name": name, **_evaluate(split, routes, cheap, strong)} for name, routes in pipelines.items()]
+
+    payload = {
+        "test": rows(test),
+        "dev": rows(dev),
+        "all_turns": {name: {"correct": sum(r[t["id"]]["correct"] for t in turns), "wrong": sum(r[t["id"]]["wrong_value"] for t in turns), "total": len(turns)} for name, r in (("cheap", cheap), ("strong", strong))},
+        "by_kind": [{"kind": group, "turns": sum(t["group"] == group for t in turns), "cheap": sum(cheap[t["id"]]["correct"] for t in turns if t["group"] == group), "strong": sum(strong[t["id"]]["correct"] for t in turns if t["group"] == group)} for group in dict.fromkeys(t["group"] for t in turns)],
+        "stops": {name: {"found": found_stops[name], "real": stop_total, "false": false_stops[name], "other_turns": len(turns) - stop_total} for name in ("cheap", "strong")},
+        "answers": _answer_rows(),
+        "memory": json.loads((RESULTS / "memory.json").read_text(encoding="utf-8")),
+    }
+    (Path(__file__).parent / "results.json").write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
 def report() -> None:
     turns = all_turns()
     cheap, strong = _load_llm("llm-cheap"), _load_llm("llm-strong")
@@ -275,6 +310,7 @@ def report() -> None:
     lines += _memory_section()
     lines += ["", "Cost is compute time and tokens, because everything runs locally and no money changes hands.", "", "\"Wrong values\" counts outputs stating a detail, intent, selection or memory the label does not have. These are the silent failures, because a missing detail only makes the engine ask again.", ""]
     (Path(__file__).parent / "results.md").write_text("\n".join(lines), encoding="utf-8")
+    _write_json(turns, test, dev, pipelines, cheap, strong, found_stops, false_stops, stop_total)
     print("\n".join(lines))
 
 

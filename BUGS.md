@@ -71,3 +71,10 @@ Each entry is a failure that actually happened during the build, with the regres
 - **Why:** intake reduced every confirmation to a plain yes, so the action the user named was lost before it could be compared with the action on the proposal.
 - **Fix:** a confirmation that names an action keeps that name, and it cannot confirm a different action (`names_action` in `src/errand/core/intake.py`, checked in `_answer_approval` in `src/errand/core/workflow.py`).
 - **Regression tests:** `test_words_naming_booking_cannot_approve_a_cancel` and `test_words_naming_booking_cannot_approve_a_reschedule` in `tests/evals/test_model_paths.py`.
+
+## 11. A tab left open approved a proposal it had never shown
+
+- **What broke:** `test_a_stale_tab_cannot_approve_a_proposal_in_a_newer_session` failed. A fresh review reproduced it in Chrome: tab A showed a booking at 08:00, tab B started a new session and showed 09:00, and tab A's "yes" booked 09:00, with no stale event.
+- **Why:** the stale check compares reply ids, and reply ids restart in each session. Both proposals had id 2, so the engine could not tell the two tabs apart.
+- **Fix:** each message names the session its page is showing, checked on the engine's thread, so a message for an older session is refused (`Sessions.say` in `src/errand/web/chat.py`).
+- **Regression tests:** `test_a_stale_tab_cannot_approve_a_proposal_in_a_newer_session` and `test_a_message_queued_behind_a_session_switch_is_not_applied_to_the_new_session` in `tests/unit/test_web.py`.

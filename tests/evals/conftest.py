@@ -1,5 +1,6 @@
 """Collects each scenario's result and generates the eval table from the test run."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from harness import SCENARIOS as _scenarios
 from harness import EvalEnv
 
 TABLE_PATH = Path(__file__).resolve().parents[2] / "eval_results.md"
+JSON_PATH = TABLE_PATH.with_suffix(".json")
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     return EvalEnv(tmp_path, monkeypatch)
@@ -43,3 +45,4 @@ def pytest_sessionfinish(session, exitstatus):
     for row in rows:
         lines.append(f"| {row['number']} | {_cell(row['name'])} | {_cell(row['expected'])} | {_cell(row['actual'])} | {row['result']} | {_cell(row['notes'])} |")
     TABLE_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    JSON_PATH.write_text(json.dumps(rows, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

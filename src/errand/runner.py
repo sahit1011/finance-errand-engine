@@ -12,7 +12,7 @@ from errand.core.turn import Budget, Turn
 from errand.core.workflow import Workflow
 from errand.gateway import ToolGateway
 from errand.infra.store import Store
-from errand.infra.trace import Tracer
+from errand.infra.trace import Tracer, no_listener
 
 # A turn with no message behind it, such as resuming after a crash.
 NO_MESSAGE_ID = 0
@@ -29,12 +29,13 @@ def _no_checkpoint(name: str) -> None:
 
 
 class Engine:
-    def __init__(self, tools, store: Store, model, trace_dir: str, clock, limits: Limits = Limits(), checkpoint: Callable[[str], None] = _no_checkpoint):
+    def __init__(self, tools, store: Store, model, trace_dir: str, clock, limits: Limits = Limits(), checkpoint: Callable[[str], None] = _no_checkpoint, on_event: Callable[[dict], None] = no_listener):
         self.store = store
         self.clock = clock
         self.limits = limits
         self.trace_dir = trace_dir
         self.checkpoint = checkpoint
+        self.on_event = on_event
         self.gateway = ToolGateway(tools, store)
         self.memory = Memory(store)
         self.executor = Executor(store, self.gateway, self.memory, limits, checkpoint)
@@ -68,7 +69,7 @@ class Engine:
         return replies
 
     def _new_turn(self, user_id: str, text: str, message_id: int, run) -> Turn:
-        tracer = Tracer(self.trace_dir, self.clock)
+        tracer = Tracer(self.trace_dir, self.clock, self.on_event)
         budget = Budget(self.limits, self.clock)
         turn = Turn(user_id=user_id, text=text, message_id=message_id, budget=budget, tracer=tracer, run=run)
         if run is not None:

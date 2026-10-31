@@ -1,0 +1,29 @@
+{
+ "replays": [
+  {
+   "id": "timeout-after-success",
+   "title": "Timeout after success",
+   "summary": "book times out after it really booked. The status check finds the booking, so there is one booking and no retry. A hijack attempt in the chat does nothing."
+  },
+  {
+   "id": "slot-taken",
+   "title": "Slot taken after approval",
+   "summary": "The provider gives the slot away after the user approved. The approval is voided, and a new slot needs a new approval."
+  },
+  {
+   "id": "reschedule",
+   "title": "Reschedule a booking",
+   "summary": "A booking moves to a new slot, with its own approval, and the move is verified before it is reported."
+  },
+  {
+   "id": "cancel-503",
+   "title": "Cancel with a transient failure",
+   "summary": "The first cancel fails with a 503. The engine retries with the same key, then verifies the cancellation."
+  },
+  {
+   "id": "stop-in-hindi",
+   "title": "Stop in Hindi",
+   "summary": "A whole sentence in Hindi is read as a stop. The proposal is voided and nothing is booked."
+  }
+ ]
+}

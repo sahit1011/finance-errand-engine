@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Errand Agent</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Errand Agent</h1>
+    <nav aria-label="Pages">
+      <a href="#chat" id="tab-chat" hidden>Chat</a>
+      <a href="#results" id="tab-results">Results</a>
+      <a href="#replay" id="tab-replay">Replay</a>
+    </nav>
+    <p class="tagline">The engine decides. A local model only reads language.</p>
+  </header>
+
+  <main>
+    <section id="page-chat" class="page" hidden>
+      <div class="bar">
+        <span id="model-status" class="pill"></span>
+        <span id="session-name" class="muted"></span>
+        <span class="spacer"></span>
+        <label for="preset">New session</label>
+        <select id="preset">
+          <option value="normal">Normal</option>
+          <option value="timeout_after_success">Next booking: times out, but books</option>
+          <option value="timeout_not_booked">Next booking: times out, does not book</option>
+          <option value="slot_taken">Next booking: slot gets taken</option>
+        </select>
+        <button id="new-session" type="button">Start</button>
+      </div>
+      <p id="model-help" class="notice" hidden></p>
+      <div class="split">
+        <section class="panel chat" aria-label="Chat">
+          <div id="messages" class="messages" aria-live="polite"></div>
+          <form id="chat-form" class="composer">
+            <input id="chat-input" type="text" autocomplete="off" maxlength="2000" aria-label="Your message" placeholder="Find a plumber for my kitchen tap next week">
+            <button id="send" type="submit">Send</button>
+          </form>
+        </section>
+        <section class="panel" aria-label="Workflow">
+          <div id="live-workflow"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="page-results" class="page" hidden>
+      <div id="results"></div>
+    </section>
+
+    <section id="page-replay" class="page" hidden>
+      <div class="bar">
+        <label for="replay-select">Saved run</label>
+        <select id="replay-select"></select>
+        <button id="replay-play" type="button">Play</button>
+        <input id="replay-position" type="range" min="0" value="0" aria-label="Step">
+        <span id="replay-count" class="muted"></span>
+      </div>
+      <p id="replay-summary" class="lede"></p>
+      <div class="split">
+        <section class="panel chat" aria-label="Conversation">
+          <div id="replay-messages" class="messages"></div>
+        </section>
+        <section class="panel" aria-label="Workflow">
+          <div id="replay-workflow"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

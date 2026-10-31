@@ -253,6 +253,7 @@ class Workflow:
             turn.budget.charge_model()
             started = time.perf_counter()
             model_input = self._model_input(turn, read_results)
+            turn.tracer.event("model_call_started")
             reply = self.model.decide(model_input, turn.budget.remaining_seconds())
             turn.tracer.event(
                 "model_call",

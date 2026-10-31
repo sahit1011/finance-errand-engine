@@ -26,7 +26,7 @@ Three facts persist across sessions, each marked stated or inferred. An inferred
 
 ## Observability
 
-Each run has one JSON Lines trace with transitions, model calls (tokens, compute time), tool calls, approval changes, limit hits and errors. Secrets are removed, and review text is cut to a preview marked untrusted. Evals are scripted and read the mock's ledger rather than what the agent says: 44 scenarios with invariants, plus tests that break a rule on purpose and confirm the evals catch it.
+Each run has one JSON Lines trace with transitions, model calls (tokens, compute time), tool calls, approval changes, limit hits and errors. Secrets are removed, and review text is cut to a preview marked untrusted. Evals are scripted and read the mock's ledger rather than what the agent says: 44 scenarios with invariants, plus tests that break a rule on purpose and confirm the evals catch it. A local web app draws the same steps live as a timeline.
 
 ## One real trace, annotated
 
@@ -47,7 +47,7 @@ The ledger holds one `book`, so one booking.
 
 ## What live testing changed
 
-Scripted tests cannot find what a real model does. The first live run showed llama.cpp's grammar fixing key order, which forced the model to invent `provider: same_as_last` and made a budget impossible to write, so each detail became its own action. Fresh reviews separately found "yes?" counting as approval and a stop lost after one turn. [BUGS.md](BUGS.md) lists ten real bugs.
+Scripted tests cannot find what a real model does. The first live run showed llama.cpp's grammar fixing key order, which forced the model to invent `provider: same_as_last` and made a budget impossible to write, so each detail became its own action. Fresh reviews separately found "yes?" counting as approval and a stop lost after one turn. [BUGS.md](BUGS.md) lists eleven real bugs.
 
 We built model routing and measured it on hand-written turns. On 55 held-out turns, 9B got 50 right, 4B 49 and the router 47, with the router using about 17% less compute than 9B. Across all 118 turns, 9B got 109 with 6 wrong values and 4B got 102 with 13. 4B also returned 3 false stops, one of which ended a live errand on "Looks perfect, thanks", where 9B returned none. So we recommend 9B alone. [Full results](benchmarks/routing/results.md). Laya is unmeasured, because a permission check here blocked running its package.
 

@@ -49,13 +49,21 @@ def _scrub_env_values(text: str) -> str:
     return text
 
 
-class Tracer:
-    """Events wait in memory until the turn's run is known, then go straight to that run's file."""
+def no_listener(event: dict) -> None:
+    return None
 
-    def __init__(self, directory: str, clock):
+
+class Tracer:
+    """Events wait in memory until the turn's run is known, then go straight to that run's file.
+
+    A listener sees each event at once, sanitised, whether or not the run is known yet, which is what a live view needs.
+    """
+
+    def __init__(self, directory: str, clock, listener=no_listener):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.clock = clock
+        self._listener = listener
         self._path: Path | None = None
         self._buffer: list[dict] = []
 
@@ -77,6 +85,8 @@ class Tracer:
             self._buffer.append(event)
         else:
             self._write(event)
+        # After the write, so that a failing view can never cost a step in the record of a real booking.
+        self._listener(event)
 
     def _write(self, event: dict) -> None:
         with self._path.open("a", encoding="utf-8") as handle:

@@ -326,6 +326,26 @@ Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 9B Q4_K_M, llama
 
 The slowest call seen is far below the 120-second turn cap, so the cap stays. Its job is to stop a stuck model, not to pace a normal one. When routing, the router's time counts against the same cap.
 
+## Web app
+
+`errand serve` runs a chat, the engine's live steps, results and replays in a browser. It is an interface over the same
+engine, so every rule above applies unchanged, and it adds no dependencies.
+
+- **Approval:** the page only sends text. A proposal needs a typed reply, judged by the same code as the CLI. Each message
+  names its session and the last reply the page drew, because reply ids restart in each session, so a tab left on an older
+  session cannot approve a newer one. Input is disabled while a turn runs.
+- **Other websites:** a page on any site can send requests to a local server, so the server listens only on `127.0.0.1`, answers
+  only to its own `Host`, and refuses a POST with another `Origin` or without a JSON content type.
+- **Hostile text:** all text reaches the page as plain text, and a content policy blocks outside scripts, styles, images and
+  connections. The page gets the same sanitised steps as a trace file, so a review appears only as a marked preview.
+- **Sessions:** one at a time, kept in `.errand/<session>/` and `traces/<session>/`. A new session can force the outcome of the next
+  `book` call, to show a failure on demand. All engine work runs on one thread, so turns stay in order.
+- **Without a model:** Results and Replay still work, and chat says what to start.
+- **Checks:** `tests/unit/test_web.py` covers the server and sessions. The page's script runs only in a browser, so
+  `tests/browser/check_page.mjs` drives it in Chrome with the real model, by hand, because neither is a test dependency.
+- **Published copy:** `errand site` writes Results and Replay as plain files to `docs/site/`. Live chat needs the local server, so
+  it is left out. A test fails if the published copy is out of date.
+
 ## Nice-to-have: model routing
 
 `errand chat` with `--strong-model-url` and `--router-url` sends each message that reaches a model to one of three routes:

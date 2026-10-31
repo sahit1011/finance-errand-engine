@@ -4,6 +4,8 @@ A chat agent that books, reschedules and cancels home-service errands against a 
 
 Everything runs on your machine. There are no cloud calls, and the tests need no model.
 
+**See it without installing anything:** [results and replays of real runs](https://sahit1011.github.io/finance-errand-engine/site/).
+
 ## Run it
 
 You need [uv](https://docs.astral.sh/uv/).
@@ -34,6 +36,18 @@ uv run errand trace run-1 --dir traces/demo-timeout_after_success
 
 To watch traces live in a second terminal, run `uv run errand trace`.
 
+## Web app
+
+```sh
+uv run errand serve
+```
+
+This opens a local page with three parts. Results and Replay work with no model, and chat needs the model server below.
+
+- **Chat:** talk to the agent while its workflow draws beside you, step by step. Click a step to see what it did and why. "New session" can force the next booking to fail, so you can watch the recovery.
+- **Results:** the eval scenarios, model comparisons and bugs, as charts with tables behind them.
+- **Replay:** step through saved real runs.
+
 ## Chat with a local model
 
 Chat needs macOS or Linux, llama.cpp, and one 5.68 GB model file ([Qwen3.5 9B](https://huggingface.co/Qwen/Qwen3.5-9B), Apache 2.0). Your messages stay on this machine: the agent refuses a model server anywhere else.
@@ -44,7 +58,7 @@ mkdir -p ~/models/qwen3.5-9b
 curl -L -o ~/models/qwen3.5-9b/Qwen3.5-9B-Q4_K_M.gguf https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf
 ```
 
-Then use three terminals:
+Start the server, then use `errand serve` above, or the CLI in three terminals:
 
 ```sh
 # 1. The model server

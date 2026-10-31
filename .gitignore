@@ -8,7 +8,7 @@ __pycache__/
 *.sqlite-shm
 .env
 .errand/
-traces/
+/traces/
 FoundinEngineer-Assignment.pdf
 docs/diagrams/*.dot
 docs/diagrams/*.mmd

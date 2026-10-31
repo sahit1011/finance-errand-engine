@@ -3,7 +3,7 @@
 We build eight vertical slices, and each ends in something runnable with its own proof. Core work comes
 first and needs no installs. Model work comes after the must-haves are solid, as the assignment asks.
 
-Slices 1-7 are built. Slice 8 is built apart from the demo recording, which the author must record.
+Slices 1-7 and 9 are built. Slice 8 is built apart from the demo recording, which the author must record.
 
 ## Slices
 
@@ -17,6 +17,7 @@ Slices 1-7 are built. Slice 8 is built apart from the demo recording, which the 
 | 6 | Live chat | Install llama.cpp, add one local LLM behind the existing interface, wall-clock review | A real chat books through to verified success, with trace recorded |
 | 7 | Model routing | Labelled turn set, router candidates, ladder, measured comparison | Results table from a real run, with quality, latency and memory |
 | 8 | Deliverables | README, design note, chosen raw trace, final `BUGS.md`, demo recording | Fresh clone runs and tests in 3 commands or fewer; every box below is ticked |
+| 9 | Web app | Chat with a live workflow timeline, results charts, replay of saved runs, published copy | Server safety tests pass; a real chat drives the page in a browser; the published page loads with no server |
 
 Scenario numbers refer to the table in [SPECS.md](SPECS.md#evals).
 

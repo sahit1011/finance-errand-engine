@@ -6,6 +6,7 @@ import re
 import select
 import sys
 import time
+import webbrowser
 from pathlib import Path
 
 from errand.core.domain import ModelUnavailable
@@ -16,6 +17,8 @@ from errand.interpret.llama import LlamaModel
 from errand.interpret.router import RoutedModel, load_routing
 from errand.mock.world import OUTCOME_SLOT_TAKEN, OUTCOME_SUCCESS, OUTCOME_TIMEOUT_BOOKED, OUTCOME_TIMEOUT_NOT_BOOKED, MockWorld, Scenario
 from errand.runner import Engine
+from errand.web.server import make_server
+from errand.web.site import export_site
 
 DEFAULT_TRACE_DIR = "traces"
 FOLLOW_POLL_SECONDS = 0.3
@@ -24,6 +27,10 @@ CHAT_USER = "user-1"
 # Uses the port in LLAMA_SERVER_COMMAND below, which the README repeats.
 DEFAULT_MODEL_URL = "http://127.0.0.1:8080"
 LLAMA_SERVER_COMMAND = "llama-server -m ~/models/qwen3.5-9b/Qwen3.5-9B-Q4_K_M.gguf --host 127.0.0.1 --port 8080 --ctx-size 8192 --parallel 1 --no-webui"
+# Our choice: not a port other tools here use.
+DEFAULT_WEB_PORT = 8765
+LOCAL_WEB_HOST = "127.0.0.1"
+DEFAULT_SITE_DIR = "docs/site"
 BOOK_OUTCOMES = (OUTCOME_SUCCESS, OUTCOME_SLOT_TAKEN, OUTCOME_TIMEOUT_BOOKED, OUTCOME_TIMEOUT_NOT_BOOKED)
 
 
@@ -37,6 +44,8 @@ def _print_event(line: str) -> None:
     elif kind == "tool_call":
         outcome = f"error={event['error']}" if "error" in event else "ok"
         print(f"[tool]   {event['tool']}{tuple(event['args'])} {outcome} {event['latency_ms']}ms")
+    elif kind == "model_call_started":
+        print("[model]  reading the message")
     elif kind == "model_call":
         print(f"[model]  {event['model']} {event['latency_ms']}ms tokens={event['prompt_tokens']}/{event['completion_tokens']}")
     elif kind == "approval":
@@ -141,6 +150,36 @@ def _chat_command(args: argparse.Namespace) -> int:
         world.close()
 
 
+def _serve_command(args: argparse.Namespace) -> int:
+    root = Path.cwd()
+    try:
+        server = make_server(root, root, args.model_url, args.port, LLAMA_SERVER_COMMAND)
+    except ValueError as error:
+        print(f"Cannot start: {error}", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"Cannot start on port {args.port}: {error}", file=sys.stderr)
+        return 1
+    url = f"http://{LOCAL_WEB_HOST}:{server.server_address[1]}/"
+    print(f"Open {url} (Ctrl-C to stop). Results and Replay work without a model; chat needs the model server.", flush=True)
+    if not args.no_open:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print()
+    finally:
+        server.close_app()
+        server.server_close()
+    return 0
+
+
+def _site_command(args: argparse.Namespace) -> int:
+    export_site(Path.cwd(), Path(args.out))
+    print(f"Wrote {args.out}/")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="errand")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -151,6 +190,14 @@ def main() -> int:
     chat.add_argument("--router-url", help="an embedding server that picks the model for each message")
     chat.add_argument("--session", type=_session_name, default="default", help="a name that keeps this session's state and traces apart")
     chat.add_argument("--book-outcome", action="append", default=[], choices=BOOK_OUTCOMES, help="force the next book call's outcome, for showing a failure live; needs a new session")
+
+    serve = commands.add_parser("serve", help="open the web app: chat with live steps, results and replays")
+    serve.add_argument("--model-url", default=DEFAULT_MODEL_URL)
+    serve.add_argument("--port", type=int, default=DEFAULT_WEB_PORT)
+    serve.add_argument("--no-open", action="store_true", help="do not open a browser")
+
+    site = commands.add_parser("site", help="write the Results and Replay pages as plain files for publishing")
+    site.add_argument("--out", default=DEFAULT_SITE_DIR)
 
     demo = commands.add_parser("demo", help="run an offline scripted demo")
     demo.add_argument("name", choices=sorted(DEMOS))
@@ -163,6 +210,10 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "chat":
         return _chat_command(args)
+    if args.command == "serve":
+        return _serve_command(args)
+    if args.command == "site":
+        return _site_command(args)
     if args.command == "demo":
         return run_demo(args.name, args.trace_dir)
     return _trace_command(args)
