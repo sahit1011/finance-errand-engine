@@ -85,8 +85,7 @@ def reopen(store, tracer, run: Run, reason: str) -> None:
         void_pending(store, tracer, run, reason)
         run.options = []
         run.selected = None
-        target = State.SEARCHING if run.state == State.HOLDING else State.COLLECTING
-        move(store, tracer, run, target, reason)
+        move(store, tracer, run, State.COLLECTING, reason)
 
 
 def consume(store, tracer, run: Run, approval_id: str) -> None:

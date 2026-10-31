@@ -26,7 +26,7 @@ TRANSITIONS: dict[State, set[State]] = {
     State.COLLECTING: {State.SEARCHING, State.AWAITING_APPROVAL, State.FAILED, State.ABANDONED},
     State.SEARCHING: {State.PRESENTING, State.COLLECTING, State.FAILED, State.ABANDONED},
     State.PRESENTING: {State.HOLDING, State.AWAITING_APPROVAL, State.COLLECTING, State.FAILED, State.ABANDONED},
-    State.HOLDING: {State.AWAITING_APPROVAL, State.EXECUTING, State.SEARCHING, State.FAILED, State.ABANDONED},
+    State.HOLDING: {State.AWAITING_APPROVAL, State.EXECUTING, State.SEARCHING, State.COLLECTING, State.FAILED, State.ABANDONED},
     State.AWAITING_APPROVAL: {State.EXECUTING, State.COLLECTING, State.PRESENTING, State.FAILED, State.ABANDONED},
     State.EXECUTING: {State.VERIFYING, State.UNKNOWN_NEEDS_CHECK, State.HOLDING, State.SEARCHING},
     State.VERIFYING: {State.DONE, State.EXECUTING, State.SEARCHING, State.FAILED, State.ABANDONED, State.UNKNOWN_NEEDS_CHECK},
@@ -64,6 +64,10 @@ class InvalidModelOutput(Exception):
     pass
 
 
+class ModelUnavailable(Exception):
+    """The model server could not give an answer, as opposed to giving a bad one."""
+
+
 @dataclass(frozen=True)
 class Limits:
     """Proposed starting values from docs/SPECS.md, not measurements."""
@@ -97,6 +101,8 @@ class Run:
     awaiting_change: bool = False
     asked_inferred: list = field(default_factory=list)
     forgotten_in_flight: bool = False
+    # Saved because a stop given while an outcome is unknown must still apply after a later message or a restart.
+    stop_requested: bool = False
     result: dict | None = None
     model_calls: int = 0
     tool_calls: int = 0

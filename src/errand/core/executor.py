@@ -79,7 +79,7 @@ class Executor:
             self._finish_book(turn, run, approval, status["booking_id"])
             return True
         if status["status"] == "failed":
-            if turn.stop_requested:
+            if run.stop_requested:
                 self._abandon(turn, run, approval, "Stopped. Nothing was booked.")
                 return True
             turn.say(f"That slot was taken, so {render.slot_text(approval.slot)} was not booked. Here is what else is open.")
@@ -94,7 +94,7 @@ class Executor:
         return self._not_booked(turn, run, approval, attempt)
 
     def _not_booked(self, turn: Turn, run: Run, approval: Approval, attempt: Attempt) -> bool:
-        if turn.stop_requested:
+        if run.stop_requested:
             self._abandon(turn, run, approval, "Stopped. Nothing was booked.")
             return True
         if turn.cap_scope == "run":
@@ -133,7 +133,7 @@ class Executor:
         if applied:
             self._finish_change(turn, run, approval)
             return True
-        if turn.stop_requested:
+        if run.stop_requested:
             self._abandon(turn, run, approval, "Stopped. Your booking is unchanged.")
             return True
         if run.forgotten_in_flight:
@@ -153,7 +153,7 @@ class Executor:
 
     def _no_answer(self, turn: Turn, run: Run) -> bool:
         move(self.store, turn.tracer, run, State.UNKNOWN_NEEDS_CHECK, "no definite answer")
-        if turn.stop_requested:
+        if run.stop_requested:
             turn.say("I cannot confirm the outcome yet, so your stop takes effect once it is known. I will check again on your next message.")
         else:
             turn.say("I cannot confirm the outcome yet, so I will not report success or try anything new. I will check again on your next message.")
@@ -187,7 +187,7 @@ class Executor:
         turn.tracer.event("verified", booking_id=booking_id)
         self.checkpoint("after_save_outcome")
         turn.say(text)
-        if turn.stop_requested:
+        if run.stop_requested:
             turn.say("It was already booked when you asked to stop. Tell me if you would like to cancel it.")
         self.memory.infer_after_booking(run, turn)
 

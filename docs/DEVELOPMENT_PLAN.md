@@ -3,7 +3,7 @@
 We build eight vertical slices, and each ends in something runnable with its own proof. Core work comes
 first and needs no installs. Model work comes after the must-haves are solid, as the assignment asks.
 
-Slices 1-5 are built. Slices 6-8 are not started, and `errand chat` arrives with slice 6.
+Slices 1-6 are built. Slices 7 and 8 are not finished.
 
 ## Slices
 
@@ -52,11 +52,10 @@ Only the rendered PNGs in [diagrams/](diagrams/) are in this repo.
 
 | Risk | What we know so far | How we find out |
 | --- | --- | --- |
-| Memory limit | The Mac has 16 GB; both LLMs and a router may not fit together | Measure peak memory in slice 6 |
-| Local model speed | Not measured; it affects the wall-clock cap | Measure in slice 6 |
-| Model files | A Qwen3.5 4B GGUF appears in web search results, a page we did not open; 9B is unconfirmed | Check model cards before downloading |
-| Licences | Reported as Apache 2.0 by web sources, but not all confirmed on the model cards | Check model cards before downloading |
-| llama.cpp version | EmbeddingGemma 2 needs a recent build; `brew info llama.cpp` showed 0.7.0 on 2026-10-31 | Load it in slice 7 |
+| Memory limit | The Mac has 16 GB; Qwen3.5 4B measured 3.50 GB maximum resident; 9B and a router are not measured | Measure in slice 7 |
+| Model files | Qwen3.5 4B is downloaded and its checksum matches; 9B is unconfirmed | Check its model card before downloading |
+| Licences | Qwen3.5 4B's LICENSE file is Apache 2.0; the others are not confirmed | Check model cards before downloading |
+| llama.cpp version | EmbeddingGemma 2 needs a recent build; 0.8.0 is installed | Load it in slice 7 |
 | Reviewer setup | The 3-command setup relies on `uv`, which reviewers may not have | README lists it as the one prerequisite |
 | Laya accuracy | One synthetic benchmark put its general checkpoint below baseline, and its confidence needs calibrating | Router comparison in slice 7 |
 | Python version | The default here is 3.14; 3.12 is available and will be pinned | First install in slice 1 |

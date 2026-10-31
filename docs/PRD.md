@@ -14,7 +14,7 @@ this repo.
 | Runtime | Everything runs on the Mac, with no cloud LLM or API | Privacy; the assignment says an LLM API is optional |
 | Language and storage | Python 3.12, SQLite, pytest | Little setup for reviewers; SQLite survives restarts |
 | Live model server | llama.cpp (`llama-server`) | Binds to 127.0.0.1 by default and supports JSON schema output |
-| Eval model | Scripted and recorded, never live | Required by must-have 8 |
+| Eval model | Scripted, never live | Required by must-have 8 |
 | Nice-to-have | Model routing, built last | The spec allows at most one; this one matches our interest in decision models |
 | Tool contract | Unchanged | The spec calls it fixed |
 | Demo | Two terminal panes: chat and live trace | Meets the side-by-side requirement |

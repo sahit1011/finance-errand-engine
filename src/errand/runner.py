@@ -5,7 +5,7 @@ from typing import Callable
 
 from errand.core import render
 from errand.core.approval import move
-from errand.core.domain import TERMINAL_STATES, CapReached, Limits, State
+from errand.core.domain import TERMINAL_STATES, CapReached, Limits, ModelUnavailable, State
 from errand.core.executor import Executor
 from errand.core.memory import Memory
 from errand.core.turn import Budget, Turn
@@ -81,6 +81,12 @@ class Engine:
             work()
         except CapReached as cap:
             self._on_cap(turn, cap)
+        except ModelUnavailable as error:
+            turn.tracer.event("error", where="model", error_type=type(error).__name__, detail=str(error))
+            turn.say(render.MODEL_UNAVAILABLE)
+            # The next yes must count, and it only counts against a proposal in the reply the user last saw.
+            if turn.run is not None and turn.run.state == State.AWAITING_APPROVAL:
+                self.workflow.show_pending_approval(turn, turn.run)
         except Exception as error:
             # The one place that catches everything, because every exit must end with a message to the user.
             self._on_error(turn, error)

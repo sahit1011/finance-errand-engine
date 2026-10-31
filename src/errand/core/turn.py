@@ -66,7 +66,6 @@ class Turn:
     trace_lines: list[str] = field(default_factory=list)
     # Set when this turn's reply shows an approval request, so the reply id can be recorded on it.
     shown_approval_id: str | None = None
-    stop_requested: bool = False
     # When a cap has been reached this turn: "turn" or "run". Verification still runs, but no new write starts.
     cap_scope: str | None = None
     run: Run | None = None

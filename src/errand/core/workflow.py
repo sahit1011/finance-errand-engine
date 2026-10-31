@@ -7,7 +7,7 @@ from errand.core import render
 from errand.core.approval import approve, move, propose, reopen, void, void_pending
 from errand.core.domain import InvalidModelOutput, Run, State
 from errand.core.intake import Kind, classify
-from errand.core.memory import InvalidMemoryValue
+from errand.core.memory import InvalidMemoryValue, check_proposal
 from errand.core.turn import Turn
 from errand.core.when import normalise_time, resolve_when
 from errand.interpret.model import Model, ModelInput, parse_output
@@ -41,6 +41,9 @@ class Workflow:
         if run is not None and self.store.open_attempt(run.id) is not None:
             self._handle_in_flight(turn, intake)
             return
+        if run is not None and intake.kind != Kind.STOP and self._drop_passed_slots(turn, run):
+            self.advance(turn)
+            return
         if intake.kind in (Kind.MEMORY_VIEW, Kind.MEMORY_FORGET, Kind.MEMORY_SET):
             if run is not None:
                 self.advance(turn)
@@ -50,7 +53,7 @@ class Workflow:
         elif intake.kind == Kind.STOP:
             self._stop(turn)
         elif intake.kind == Kind.NUMBER and run is not None and (run.options or run.booking_choices):
-            self._select(turn, run, intake.number, from_model=False)
+            self._select(turn, run, intake.number)
             self.advance(turn)
         else:
             self._interpret(turn)
@@ -61,6 +64,8 @@ class Workflow:
         run = turn.run
         if run.state in (State.EXECUTING, State.UNKNOWN_NEEDS_CHECK):
             move(self.store, turn.tracer, run, State.VERIFYING, "restart, status first")
+        if self.store.open_attempt(run.id) is None:
+            self._drop_passed_slots(turn, run)
         self.advance(turn)
 
     def advance(self, turn: Turn) -> None:
@@ -80,7 +85,7 @@ class Workflow:
             elif state == State.HOLDING:
                 self._step_holding(turn, run)
             elif state == State.AWAITING_APPROVAL:
-                self._show_pending_approval(turn, run)
+                self.show_pending_approval(turn, run)
                 break
             elif state == State.EXECUTING:
                 self.executor.execute(turn, run)
@@ -202,9 +207,32 @@ class Workflow:
                 return
             turn.say(f"Saved: your {intake.key.replace('_', ' ')} is {value}.")
 
+    def _drop_passed_slots(self, turn: Turn, run: Run) -> bool:
+        """Options and proposals go stale while the user is away, and nothing later checks that a slot is still ahead."""
+        if run.state not in (State.PRESENTING, State.HOLDING, State.AWAITING_APPROVAL):
+            return False
+        slots = [option["slot"] for option in run.options]
+        if run.selected:
+            slots.append(run.selected["slot"])
+        question = run.pending_question
+        if question and question["kind"] == "approval":
+            slots.append(self.store.approval(question["approval_id"]).slot)
+        if not any(self._has_passed(slot) for slot in slots):
+            return False
+        turn.say("Some of those times have passed, so I have not acted on that. Let me check what is open now.")
+        if run.workflow == "cancel":
+            run.target_booking = None
+        reopen(self.store, turn.tracer, run, "a slot has passed")
+        return True
+
+    def _has_passed(self, slot: str) -> bool:
+        return slot <= self.clock.now().strftime("%Y-%m-%dT%H:%M")
+
     def _handle_in_flight(self, turn: Turn, intake) -> None:
         run = turn.run
-        turn.stop_requested = intake.kind == Kind.STOP
+        if intake.kind == Kind.STOP:
+            run.stop_requested = True
+            self.store.save_run(run)
         if run.state in (State.EXECUTING, State.UNKNOWN_NEEDS_CHECK):
             move(self.store, turn.tracer, run, State.VERIFYING, "checking the outcome before anything else")
         self.advance(turn)
@@ -233,9 +261,12 @@ class Workflow:
             )
             try:
                 output = parse_output(reply.raw)
-                for action in output.actions:
-                    if not self._apply_action(turn, action, read_results):
-                        return
+                self._check_actions(turn, output.actions)
+                if self._refuses_another_errand(turn, output.actions):
+                    return
+                # An output is applied whole, and a details action needs the run its intent creates.
+                for action in sorted(output.actions, key=lambda a: a["type"] != "set_intent"):
+                    self._apply_action(turn, action, read_results)
             except (InvalidModelOutput, InvalidMemoryValue) as error:
                 invalid += 1
                 turn.tracer.event("model_output_rejected", detail=str(error))
@@ -244,7 +275,7 @@ class Workflow:
                     return
                 continue
             if output.done:
-                if not output.actions and turn.run is None:
+                if turn.run is None and not turn.lines:
                     turn.say("I can book, reschedule or cancel home services. What would you like to do?")
                 return
 
@@ -261,31 +292,70 @@ class Workflow:
             model_input.pending_question = run.pending_question["kind"] if run.pending_question else None
         return model_input
 
-    def _apply_action(self, turn: Turn, action: dict, read_results: list[dict]) -> bool:
-        """Returns False if the rest of this model output must be ignored."""
+    def _check_actions(self, turn: Turn, actions: list[dict]) -> None:
+        """Rejects a whole output before any of it applies, so a rejected output changes nothing."""
+        run = turn.run
+        intents = {a["intent"] for a in actions if a["type"] == "set_intent"}
+        if len(intents) > 1:
+            raise InvalidModelOutput(f"more than one intent: {sorted(intents)}")
+        if sum(a["type"] == "select_option" for a in actions) > 1:
+            raise InvalidModelOutput("more than one selection")
+        for action in actions:
+            kind = action["type"]
+            if kind == "update_details":
+                if run is None and not intents:
+                    raise InvalidModelOutput("details given before any intent")
+                for key, value in action["details"].items():
+                    self._clean_detail(key, value)
+            elif kind == "select_option":
+                self._check_selection(run, action["option"])
+            elif kind == "request_read" and action["tool"] == "get_provider":
+                self._option(run, action.get("option"))
+            elif kind == "propose_memory":
+                check_proposal(action["key"], action["value"], turn.text)
+
+    def _check_selection(self, run: Run | None, number: int) -> None:
+        if run is not None and run.booking_choices:
+            if not any(c["n"] == number for c in run.booking_choices):
+                raise InvalidModelOutput(f"option was not presented: {number!r}")
+            return
+        self._option(run, number)
+        if run.state not in (State.PRESENTING, State.AWAITING_APPROVAL):
+            raise InvalidModelOutput(f"cannot select an option in state {run.state}")
+
+    @staticmethod
+    def _option(run: Run | None, number) -> dict:
+        option = next((o for o in run.options if o["n"] == number), None) if run is not None else None
+        if option is None:
+            raise InvalidModelOutput(f"option was not presented: {number!r}")
+        return option
+
+    @staticmethod
+    def _refuses_another_errand(turn: Turn, actions: list[dict]) -> bool:
+        run = turn.run
+        if run is None or not any(a["type"] == "set_intent" and a["intent"] != run.workflow for a in actions):
+            return False
+        turn.say(f"We are still working on your {run.workflow} request. Finish it first, or say stop to abandon it.")
+        return True
+
+    def _apply_action(self, turn: Turn, action: dict, read_results: list[dict]) -> None:
         kind = action["type"]
         if kind == "set_intent":
-            return self._set_intent(turn, action["intent"])
-        if kind == "update_details":
+            self._set_intent(turn, action["intent"])
+        elif kind == "update_details":
             self._update_details(turn, action["details"])
         elif kind == "select_option":
-            if turn.run is None:
-                raise InvalidModelOutput("no options have been presented")
-            self._select(turn, turn.run, action["option"], from_model=True)
+            self._select(turn, turn.run, action["option"])
         elif kind == "request_read":
-            read_results.append(self._read_for_model(turn, action))
+            self._read_for_model(turn, action, read_results)
         elif kind == "propose_memory":
             self.memory.propose_from_model(turn, turn.run, action["key"], action["value"])
         elif kind == "need_clarification":
             turn.say("Could you tell me a little more?")
-        return True
 
-    def _set_intent(self, turn: Turn, intent: str) -> bool:
+    def _set_intent(self, turn: Turn, intent: str) -> None:
         if turn.run is not None:
-            if turn.run.workflow != intent:
-                turn.say(f"We are still working on your {turn.run.workflow} request. Finish it first, or say stop to abandon it.")
-                return False
-            return True
+            return
         run = self.store.create_run(turn.user_id, intent)
         # This turn's calls happened before the run existed, and they still count against it.
         run.model_calls = turn.budget.model_calls
@@ -294,7 +364,6 @@ class Workflow:
         turn.budget.attach(run)
         turn.tracer.bind(run.id)
         turn.tracer.event("run_started", run_id=run.id, workflow=intent)
-        return True
 
     def _update_details(self, turn: Turn, details: dict) -> None:
         run = turn.run
@@ -309,9 +378,25 @@ class Workflow:
         if not changed:
             return
         run.awaiting_change = False
+        if "service" in changed:
+            self._forget_what_depended_on_the_service(run)
+        if run.workflow == "cancel" and "when" in changed:
+            run.target_booking = None
+            run.booking_choices = []
         if run.state in (State.PRESENTING, State.AWAITING_APPROVAL, State.HOLDING):
             reopen(self.store, turn.tracer, run, "correction")
         self.store.save_run(run)
+
+    @staticmethod
+    def _forget_what_depended_on_the_service(run: Run) -> None:
+        run.duplicate_cleared = False
+        if run.pending_question and run.pending_question["kind"] == "duplicate_check":
+            run.pending_question = None
+        if run.detail("provider") == SAME_AS_LAST:
+            run.details.pop("provider_id", None)
+        if run.workflow in ("reschedule", "cancel"):
+            run.target_booking = None
+            run.booking_choices = []
 
     def _clean_detail(self, key: str, value):
         try:
@@ -332,42 +417,40 @@ class Workflow:
             raise InvalidModelOutput(f"bad {key}: {value!r}") from error
         raise InvalidModelOutput(f"bad {key}: {value!r}")
 
-    def _read_for_model(self, turn: Turn, action: dict) -> dict:
+    def _read_for_model(self, turn: Turn, action: dict, read_results: list[dict]) -> None:
         if action["tool"] == "list_bookings":
             bookings = self.gateway.list_bookings(turn, turn.user_id)
-            return {"tool": "list_bookings", "bookings": [{"id": b["id"], "service": b["service"], "slot": b["slot"], "status": b["status"]} for b in bookings]}
-        run = turn.run
-        number = action.get("option")
-        option = next((o for o in run.options if o["n"] == number), None) if run is not None else None
-        if option is None:
-            raise InvalidModelOutput(f"option was not presented: {number!r}")
+            read_results.append({"tool": "list_bookings", "bookings": [{"id": b["id"], "service": b["service"], "slot": b["slot"], "status": b["status"]} for b in bookings]})
+            return
+        number = action["option"]
+        if any(result["tool"] == "get_provider" and result["option"] == number for result in read_results):
+            return
+        option = self._option(turn.run, number)
         provider = self.gateway.get_provider(turn, option["provider_id"])
         turn.say_untrusted(render.provider_details(provider))
         # Review text goes to the user as quoted data. The model is told only that it was shown.
-        return {"tool": "get_provider", "option": number, "shown_to_user": True}
+        read_results.append({"tool": "get_provider", "option": number, "shown_to_user": True})
 
     # Choosing among presented options.
 
-    def _select(self, turn: Turn, run: Run, number: int, from_model: bool) -> None:
+    def _select(self, turn: Turn, run: Run, number: int) -> None:
         if run.booking_choices:
             choice = next((c for c in run.booking_choices if c["n"] == number), None)
             if choice is None:
-                self._not_listed(turn, number, from_model)
+                turn.say(f"{number} is not one of the choices listed.")
                 return
             run.target_booking = {k: choice[k] for k in ("id", "provider", "service", "slot", "status")}
             run.booking_choices = []
             return
         option = next((o for o in run.options if o["n"] == number), None)
         if option is None:
-            self._not_listed(turn, number, from_model)
+            turn.say(f"{number} is not one of the choices listed.")
             return
         if run.state == State.AWAITING_APPROVAL:
             with self.store.tx():
                 void_pending(self.store, turn.tracer, run, "user chose a different option")
                 move(self.store, turn.tracer, run, State.PRESENTING, "user chose a different option")
         if run.state != State.PRESENTING:
-            if from_model:
-                raise InvalidModelOutput(f"cannot select an option in state {run.state}")
             turn.say("I am still working on the option you chose.")
             return
         run.selected = option
@@ -378,12 +461,6 @@ class Workflow:
         propose(self.store, turn.tracer, run, "reschedule", option["provider_id"], option["name"], option["slot"], price, label, booking_id=run.target_booking["id"])
         move(self.store, turn.tracer, run, State.AWAITING_APPROVAL, "slot chosen")
 
-    @staticmethod
-    def _not_listed(turn: Turn, number: int, from_model: bool) -> None:
-        if from_model:
-            raise InvalidModelOutput(f"option was not presented: {number!r}")
-        turn.say(f"{number} is not one of the choices listed.")
-
     # State steps.
 
     def _step_collecting(self, turn: Turn, run: Run) -> bool:
@@ -392,15 +469,17 @@ class Workflow:
             self._repeat_question(turn, run)
             return False
         if run.awaiting_change:
-            turn.say("Nothing matched last time. Try changing the time, area or budget.")
+            searched = resolve_when(run.detail("when"), self.clock.now().date())
+            turn.say(f"Nothing matched for {render.dates_text(*searched)}. Try changing the time, area or budget.")
             return False
         if run.workflow in ("reschedule", "cancel") and run.target_booking is None:
             if not self._find_target(turn, run):
                 return run.state != State.COLLECTING
+        # Before memory, because asking for the same one as last time overrides a saved technician.
+        if run.detail("provider") == SAME_AS_LAST and run.detail("provider_id") is None and run.detail("service") is not None:
+            self._resolve_same_as_last(turn, run)
         if self.memory.apply_to_run(turn, run):
             return False
-        if run.detail("provider") == SAME_AS_LAST and run.detail("provider_id") is None:
-            self._resolve_same_as_last(turn, run)
         missing = self._missing(run)
         if missing:
             turn.say(render.ask_missing(missing))
@@ -475,7 +554,7 @@ class Workflow:
 
     def _abort_rehold(self, turn: Turn, run: Run, attempt) -> bool:
         """A re-hold means the last book call changed nothing, so a stop or forget can end it here without a write."""
-        if turn.stop_requested:
+        if run.stop_requested:
             with self.store.tx():
                 void(self.store, turn.tracer, run, attempt.approval_id, "user stopped during re-hold")
                 move(self.store, turn.tracer, run, State.ABANDONED, "user stopped during re-hold")
@@ -490,9 +569,17 @@ class Workflow:
                 run.options = []
                 move(self.store, turn.tracer, run, State.SEARCHING, "forgotten value during re-hold")
             return True
+        if self._has_passed(run.selected["slot"]):
+            turn.say("Nothing was booked, because that time has now passed. Here is what else is open.")
+            with self.store.tx():
+                void(self.store, turn.tracer, run, attempt.approval_id, "approved slot has passed")
+                run.selected = None
+                run.options = []
+                move(self.store, turn.tracer, run, State.SEARCHING, "approved slot has passed")
+            return True
         return False
 
-    def _show_pending_approval(self, turn: Turn, run: Run) -> None:
+    def show_pending_approval(self, turn: Turn, run: Run) -> None:
         approval = self.store.approval(run.pending_question["approval_id"])
         turn.say(render.proposal(approval))
         turn.shown_approval_id = approval.id
@@ -549,7 +636,7 @@ class Workflow:
         if not same_service:
             return False
         run.pending_question = {"kind": "duplicate_check"}
-        turn.say(f"You already have a {run.detail('service')} booked for {render.slot_text(same_service[0]['slot'])}. Do you want another one? Reply yes or no.")
+        turn.say(f"You already have a booking for {render.service_text(run.detail('service'))} on {render.slot_text(same_service[0]['slot'])}. Do you want another one? Reply yes or no.")
         return True
 
     def _find_target(self, turn: Turn, run: Run) -> bool:

@@ -37,7 +37,7 @@ The approval record and the gateway check, highlighted below, are the two pieces
 | `executor` | Runs the write and verify protocols for book, cancel and reschedule |
 | `memory` | Stores facts with provenance; handles correct and forget, including effects on active runs |
 | `render` | Writes every user-facing message from templates |
-| Model interface | Returns structured actions from scripted, recorded or llama.cpp models |
+| Model interface | Returns structured actions from scripted or llama.cpp models |
 | `router` | Picks which model handles a turn (nice-to-have) |
 | Output validator | Rejects bad schemas and any provider, slot or option the engine did not present |
 | Tool gateway | Only path to tools: checks approval on writes, counts calls, traces, sanitises |
@@ -61,7 +61,7 @@ A turn follows these steps:
    and `done: false` asks for another model step. The engine then runs its own reads and holds until the run
    is waiting on the user or a cap is hit.
 4. The validator rejects any action that fails its schema, or that names a provider, slot or option the
-   engine did not present.
+   engine did not present. It checks a whole output first, so a rejected output changes nothing.
 5. The workflow moves state, and every move is saved and traced.
 6. The renderer writes the reply from templates and saves it until delivered. Every exit path ends here.
 
@@ -74,14 +74,14 @@ before approval, the key is saved before `book`, and only a status check can con
 
 ## Interpretation interface
 
-The domain core depends on one interface, with three implementations. Scripted and recorded versions
-drive evals; the llama.cpp version drives live chat. The router is added behind this same interface.
+The domain core depends on one interface, with two implementations. The scripted version drives evals
+and demos; the llama.cpp version drives live chat. The router is added behind this same interface.
 
 | Action the model may return | What the engine does with it |
 | --- | --- |
-| Set intent | Starts or switches the workflow type |
+| Set intent | Starts the workflow type; a different type during an active run is refused |
 | Update details | Validates and stores values, with source `user_this_run` |
-| Select option | Accepted only if the option was presented; leads only to a proposal |
+| Select option | Accepted only if the option was presented and is still ahead; leads only to a proposal |
 | Request a read tool | Runs it through the gateway; the model gets a safe summary back |
 | Propose a memory change | Allowed only from the user's message, and shown back to the user |
 | Need clarification | The engine picks the question from its template list |
@@ -121,7 +121,7 @@ records survive, exactly as with a real provider.
 | Any cap reached with a write in flight | Turn runner | Verification still runs, under its own cap; no new write starts |
 | Status check gives no answer | Executor | `UNKNOWN_NEEDS_CHECK`; new keys blocked for that user; next message checks again |
 | Invalid model output | Validator | Traced and counted against the cap; asks the user if it persists |
-| Local model server down | Model client error | Clear message naming the problem; state kept |
+| Local model server down | Model client error | At start, the chat refuses and prints the command to start it. Mid-chat, a clear message; state kept; replies settled in code still work |
 | Unknown error | Top-level handler | Traced; user told what is known; in-flight runs go to `UNKNOWN_NEEDS_CHECK` |
 
 ## Local-only enforcement
@@ -135,7 +135,7 @@ records survive, exactly as with a real provider.
 
 ```text
 src/errand/
-  cli.py              demo and trace commands (chat arrives in slice 6)
+  cli.py              chat, demo and trace commands
   demos.py            offline scripted demos
   runner.py           turn runner, final error handler, resume on start
   gateway.py          tool gateway: approval check, tracing
@@ -153,6 +153,7 @@ src/errand/
   interpret/
     model.py          interface, action schema, output parser
     scripted.py       scripted and looping models
+    llama.py          live model client, prompt and output grammar
   infra/
     store.py          SQLite
     trace.py          JSON Lines traces and sanitising
@@ -160,7 +161,7 @@ src/errand/
   mock/
     world.py          the 8 tools, ledger, scenario config
 tests/
-  unit/               contract, intake, dates, model output
+  unit/               contract, intake, dates, model output, model client, chat command
   evals/              42 scenarios, edge cases, invariants, sabotage tests, table generator
 docs/
 traces/               written at run time, not committed

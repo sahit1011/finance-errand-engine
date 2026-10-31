@@ -10,9 +10,9 @@ last column is our design: models can ask for read tools, and only the engine ca
 
 | Tool | Returns | Failure behaviour | Who can trigger it |
 | --- | --- | --- | --- |
-| `search_providers(service, area, date_range)` | 3-8 providers: id, price (₹), rating, free slots, attributes | None | Engine; model may request |
+| `search_providers(service, area, date_range)` | 3-8 providers: id, price (₹), rating, free slots, attributes | None | Engine only |
 | `get_provider(provider_id)` | Details and free-text reviews | At least one review contains a prompt injection | Engine; model may request, but never sees review text |
-| `list_bookings(user_id)` | Past and upcoming bookings: id, provider, service, slot, status | None | Engine; model may request |
+| `list_bookings(user_id)` | Past and upcoming bookings: id, provider, service, slot, status | None | Engine; a scripted model may request it, and a live model is not offered it |
 | `hold_slot(provider_id, slot)` | `hold_id`, `expires_at` (10 min), `quoted_price` | `slot_unavailable`; the quote may differ from search (configurable) | Engine only |
 | `book(hold_id, idempotency_key)` | `booking_id` | 70% success, 15% `slot_taken`, 15% timeout (half of those actually booked); `hold_expired` if past expiry | Engine only, with approval |
 | `get_booking_status(idempotency_key)` | `booked` + `booking_id`, `not_found` or `failed` | Authoritative source of truth | Engine only |
@@ -47,18 +47,27 @@ a per-run cap is reached. Moving to `FAILED` or `ABANDONED` voids any pending pr
 pending question in the same transaction, so a later "yes" finds nothing to approve.
 
 Intake matches a bare stop, such as "stop" or "never mind", in code. A write in flight cannot be
-abandoned, so a stop in `UNKNOWN_NEEDS_CHECK` rechecks status without retrying. If booked, the booking is
+abandoned, so a stop in `UNKNOWN_NEEDS_CHECK` rechecks status without retrying, and the stop is saved on the run so it
+still applies after a later message or a restart. If booked, the booking is
 reported and a cancel is offered. If `not_found` or `failed`, the approval is voided and the run moves to
 `ABANDONED`. If there is no answer, the user is told the stop takes effect once the outcome is known.
 
-A user has at most one active run, so a new session resumes it. A new errand request during an active
-run asks the user to finish or abandon it first. On start, an active run continues: `SEARCHING` and `HOLDING`
+A user has at most one active run, so a new session resumes it. A request for a different action during an
+active run, such as a cancel during a booking, asks the user to finish or abandon it first. A different service in
+the same action, such as "also book an electrician" during a plumber booking, is treated as a correction, because a
+model output cannot tell "also" from "instead". The user sees the changed options before approving anything. On start, an active run continues: `SEARCHING` and `HOLDING`
 run again, and options or an approval request are shown again. A run reuses its own unexpired hold when the user
 returns to the same option. An orphaned hold may block its slot until it expires, and the user then gets other
 options.
 
 Corrections go through `COLLECTING`, which moves straight on when every detail is known, so nothing is
-re-asked.
+re-asked. Changing the service clears the duplicate check and any "same as last time" provider. In a reschedule or
+cancel it also finds the booking again, and so does changing the day of a cancel.
+
+Options and proposals can go stale while the user is away. Before acting on a message or resuming, the engine checks
+that every slot on offer is still ahead. If one has passed, it says so, voids any proposal and searches again, and the
+message is not acted on. A stop still applies. A re-hold whose approved slot has passed voids the approval with no
+write.
 
 A message that arrives while a write is in flight or unknown is not acted on, apart from a stop or a
 memory command. The engine verifies the write, ends the turn with the result, says the message was not applied, and offers a
@@ -93,8 +102,9 @@ affects a pending proposal, the proposal is voided. Budget and time filtering ha
 - **No stale approvals:** a "yes" counts only if it was sent after that proposal was shown. Each message
   carries the id of the last reply the client displayed, and the CLI discards typed-ahead input before
   prompting. A queued "yes" therefore cannot approve a new price the user has not seen.
-- **What does not count:** "yes, but make it 11" goes to the model as a correction. A bare "yes" with
-  nothing pending is settled in code: it reports current status and does nothing else.
+- **What does not count:** "yes, but make it 11" goes to the model as a correction, and so does a question such
+  as "yes?" or "book it?". A bare "yes" with nothing pending is settled in code: it reports current status and does
+  nothing else.
 - **What "no" does:** a bare rejection, also matched by code, voids the proposal. Rejecting a cancel
   ends the run and keeps the booking.
 - **The record:** approval id, run, user, action, provider, slot, price, booking id if any, source
@@ -190,12 +200,14 @@ told why.
 
 A request like "not before 10 a.m." applies to that run only. It can become an inferred fact at most.
 The model receives the current message and a state summary, not the whole chat, so forgotten facts
-cannot return through old messages. Every memory change is shown to the user in the same reply.
+cannot return through old messages. Every memory change is shown to the user in the same reply. A value a model
+suggests must appear in the user's own words: a time must be one the message states, so 21:00 does not pass for
+"9 am", and a technician's name must match whole words.
 
 ## Limits
 
 Caps apply per user turn and per run. Time waiting for the user does not count. All values below are
-proposed, and the wall-clock value will be reviewed once local model speed is measured.
+proposed. The wall-clock values stay after review: see the measured model speed under [Live model](#live-model).
 
 | Limit | Per user turn | Per run |
 | --- | --- | --- |
@@ -219,8 +231,8 @@ is known. If a write was in flight, the run moves to `UNKNOWN_NEEDS_CHECK`.
 
 ## Traces
 
-- **Format:** one JSON Lines file per run, at `traces/<run_id>.jsonl`. A restart continues the same
-  file with a `resumed` event.
+- **Format:** one JSON Lines file per run, at `traces/<session>/<run_id>.jsonl`. Demos use
+  `traces/demo-<name>/`. A restart continues the same file with a `resumed` event.
 - **Events:** state transitions, model calls, tool calls with arguments, sanitised results, approval
   changes, limit hits and errors.
 - **Fields:** timestamp, latency, tokens and compute time. Dollar cost is zero locally, so "cost" means
@@ -287,6 +299,26 @@ These invariants run after every scenario:
 | 40 | Stop in `UNKNOWN_NEEDS_CHECK` | No retry; booked is reported, while `not_found` voids and abandons | |
 | 41 | Forget during an in-flight write | No retry using the forgotten value; a confirmed booking is still reported | Yes |
 | 42 | Seeded cancel with no price available | No approval or write; run moves to `FAILED`; booking unchanged | |
+
+## Live model
+
+`errand chat` talks to one `llama-server` on this machine, and nothing else.
+
+- **Local only:** a model URL that is not plain `http` to a loopback address is refused before any connection. The client uses `http.client`, which ignores proxy settings and follows no redirects.
+- **Shape of the output:** llama.cpp compiles a JSON schema into a grammar, so a live model cannot write an action outside the list above. Two choices in that schema came from real failures, recorded in `BUGS.md`: each detail is its own action, and `done` is fixed to true.
+- **Not offered to a live model:** `list_bookings`. The engine reads bookings itself, and the result would reach only the model, which cannot speak to the user.
+- **All or nothing:** every action in an output is checked before any applies, so a rejected output changes nothing. It may hold one selection and one intent at most.
+- **Settings:** temperature 0, thinking off, at most 512 output tokens. These are our choices.
+
+Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 4B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`. The sample is 13 model calls from one set of live chats, so treat the percentiles as rough:
+
+| Measure | Value |
+| --- | --- |
+| Latency per model call | p50 1.32 s, p95 7.19 s, max 7.19 s |
+| Largest prompt and output | 1,333 and 248 tokens |
+| Server memory | 3.50 GB maximum resident, 1.33 GB peak footprint |
+
+The slowest call seen is far below the 120-second turn cap, so the cap stays. Its job is to stop a stuck model, not to pace a normal one.
 
 ## Nice-to-have: model routing
 

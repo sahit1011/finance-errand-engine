@@ -36,3 +36,31 @@ Each entry is a failure that actually happened during the build, with the regres
 - **Why:** after `hold_expired`, the run sits in `HOLDING` with an approved attempt. The stop logic only ran on the way through `VERIFYING`, so a stop in `HOLDING` carried on to a new hold and then `book`, and the user was told it was "already booked when you asked to stop".
 - **Fix:** a re-hold now checks for a stop or a forgotten value first, and ends the run with no write (`_abort_rehold` in `src/errand/core/workflow.py`).
 - **Regression tests:** `test_stop_during_a_rehold_never_books` and `test_forget_during_a_rehold_does_not_retry_with_the_forgotten_value` in `tests/evals/test_edge_cases.py`.
+
+## 6. The output schema forced the live model to invent a provider preference
+
+- **What broke:** the first run against the real model turned "Find a plumber for my kitchen tap this week, mornings only, under ₹1,500" into `{"service":"plumber","when":"this_week","latest_time":"12:00","provider":"same_as_last"}`. The budget was gone, and a preference the user never stated had appeared. The output was valid, so nothing rejected it. Every scripted test passed, because scripted models skip the grammar.
+- **Why:** llama.cpp's grammar fixes the order of an object's keys. Once the model had written `latest_time` and a comma, `provider` was the only legal next key, and `budget` could no longer be written at all.
+- **Fix:** each detail is now its own action. A list can take details in any order and can end at any point, so no key is ever forced (`output_schema` in `src/errand/interpret/llama.py`).
+- **Regression test:** `test_the_schema_cannot_force_a_detail_the_user_never_gave` in `tests/unit/test_llama_model.py`.
+
+## 7. The live model repeated itself until a cap stopped it
+
+- **What broke:** asking about reviews printed the same provider five times and ended with "I reached my limit on thinking steps". Then "the cheapest one" replied "Sorry, I did not understand that" just above the correct proposal. The trace showed `request_read` five times, and `select_option` three times with two rejected in `HOLDING`.
+- **Why:** the model could return `done: false`, which asks for another step on the same message. Nothing new reaches it on that step, so at temperature 0 it returned the same action again. Scripted models returned exactly what each test wanted, so this never appeared.
+- **Fix:** the live schema fixes `done` to true, so the grammar cannot express a second step. The caps still stop any other model that loops.
+- **Regression test:** `test_a_live_model_cannot_ask_for_a_second_step_on_one_message` in `tests/unit/test_llama_model.py`.
+
+## 8. "yes?" approved a booking
+
+- **What broke:** `test_a_question_is_not_an_approval` failed: with a proposal showing, "book it?", "ok?" and "yes?" each counted as approval. A fresh review spotted it, and the test reproduced it. This breaks must-have 2 directly, in the rule that "yes, but" was built to protect.
+- **Why:** intake removed all trailing punctuation before matching the list of bare confirmations, including the question mark that shows the user is asking, not agreeing.
+- **Fix:** intake no longer removes a question mark before matching confirmations (`_normalise` in `src/errand/core/intake.py`).
+- **Regression tests:** `test_a_question_is_not_an_approval` in `tests/evals/test_model_paths.py`, and `test_a_question_is_not_a_confirmation` in `tests/unit/test_intake.py`.
+
+## 9. A stop was forgotten after one turn, and the next message booked anyway
+
+- **What broke:** `test_a_stop_given_while_the_outcome_is_unknown_still_applies_on_the_next_message` failed. `book` timed out and status gave no answer. The user said stop and was told "your stop takes effect once it is known". Their next message made a second `book` call and replied "Booked and verified". A restart did the same.
+- **Why:** the stop was held on the `Turn` object, which lasts one message, so the promise made to the user could not survive to the moment it had to be kept.
+- **Fix:** the stop is saved on the run (`stop_requested` in `src/errand/core/domain.py`).
+- **Regression tests:** both `test_a_stop_given_while_the_outcome_is_unknown_*` tests in `tests/evals/test_model_paths.py`.

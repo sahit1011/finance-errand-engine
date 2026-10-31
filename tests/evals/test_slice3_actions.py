@@ -109,6 +109,12 @@ def test_duplicate_check(env):
     env.record.notes = "Asked before searching; after a yes, the slot already booked was not among the options"
 
 
+def test_the_duplicate_question_names_the_service_in_plain_words(env):
+    env.start(Scenario(seeded_bookings=[seeded("2026-11-03T09:00", provider="ac_service-indiranagar-7", service="ac_service")]))
+    reply = env.say("Get my AC serviced", intent("book", service="ac_service", area="indiranagar", when="this_week", budget="no_limit"))
+    assert "You already have a booking for ac service on Tue 3 Nov, 09:00." in reply
+
+
 def test_declining_a_second_booking_abandons_the_errand(env):
     env.start(Scenario(seeded_bookings=[seeded()]))
     env.say("Find a plumber", find_plumber())

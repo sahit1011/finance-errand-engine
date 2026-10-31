@@ -24,7 +24,7 @@ class Intake:
     value: str | None = None
 
 
-# Bare confirmations only. "yes, but make it 11" does not match, so it can never become an approval.
+# Bare confirmations only. "yes, but make it 11" and "yes?" do not match, so neither can become an approval.
 _YES = {"yes", "y", "yeah", "yep", "ok", "okay", "sure", "confirm", "confirmed", "yes please", "yes confirm", "go ahead", "book it", "do it"}
 _NO = {"no", "n", "nope", "no thanks", "dont", "do not"}
 _STOP = {"stop", "never mind", "nevermind", "abandon", "cancel this", "forget it", "quit"}
@@ -52,7 +52,7 @@ _NUMBER = re.compile(r"^(?:option |number )?(\d+)$")
 def _normalise(text: str) -> str:
     cleaned = text.strip().lower().replace("'", "")
     cleaned = re.sub(r"\s+", " ", cleaned)
-    return cleaned.rstrip(".!?, ")
+    return cleaned.rstrip(".!, ")
 
 
 def classify(text: str) -> Intake:
@@ -63,12 +63,12 @@ def classify(text: str) -> Intake:
         return Intake(Kind.NO)
     if cleaned in _STOP:
         return Intake(Kind.STOP)
-    if cleaned in _MEMORY_VIEW:
+    if cleaned.rstrip("?") in _MEMORY_VIEW:
         return Intake(Kind.MEMORY_VIEW)
     match = _NUMBER.match(cleaned)
     if match:
         return Intake(Kind.NUMBER, number=int(match.group(1)))
-    match = _FORGET.match(cleaned)
+    match = _FORGET.match(cleaned.rstrip("?"))
     if match:
         return Intake(Kind.MEMORY_FORGET, key=_MEMORY_NAMES[match.group(1)])
     match = _SET.match(re.sub(r"\s+", " ", text.strip()).rstrip(".!?, "))

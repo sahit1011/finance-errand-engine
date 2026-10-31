@@ -16,6 +16,16 @@ def test_anything_more_than_a_bare_confirmation_is_not_yes(text):
     assert classify(text).kind == Kind.OTHER
 
 
+@pytest.mark.parametrize("text", ["yes?", "ok?", "book it?", "Go ahead?", "confirm?"])
+def test_a_question_is_not_a_confirmation(text):
+    assert classify(text).kind == Kind.OTHER
+
+
+@pytest.mark.parametrize("text", ["what do you remember?", "What do you remember about me?"])
+def test_memory_questions_still_count_as_memory_commands(text):
+    assert classify(text).kind == Kind.MEMORY_VIEW
+
+
 @pytest.mark.parametrize("text", ["no", "No.", "nope", "no thanks"])
 def test_bare_rejections_are_no(text):
     assert classify(text).kind == Kind.NO

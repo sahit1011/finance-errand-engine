@@ -5,6 +5,7 @@ from datetime import date, timedelta
 
 _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 _SUNDAY = 6
+WHEN_WORDS = ("today", "tomorrow", "this_week", "next_week", *_WEEKDAYS)
 _TIME = re.compile(r"^(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?$")
 
 

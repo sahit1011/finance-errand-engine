@@ -33,6 +33,15 @@ def slot_text(slot: str) -> str:
     return datetime.fromisoformat(slot).strftime("%a %-d %b, %H:%M")
 
 
+def dates_text(start: str, end: str) -> str:
+    first = datetime.fromisoformat(start).strftime("%a %-d %b")
+    return first if start == end else f"{first} to {datetime.fromisoformat(end).strftime('%a %-d %b')}"
+
+
+def service_text(service: str) -> str:
+    return service.replace("_", " ")
+
+
 def money(amount: int) -> str:
     return f"₹{amount:,}"
 
@@ -52,7 +61,7 @@ def options(run: Run) -> str:
 def booking_choices(run: Run) -> str:
     lines = ["You have more than one matching booking:"]
     for choice in run.booking_choices:
-        lines.append(f"  {choice['n']}. {choice['service']} on {slot_text(choice['slot'])}")
+        lines.append(f"  {choice['n']}. {service_text(choice['service'])} on {slot_text(choice['slot'])}")
     lines.append("Which one do you mean? Reply with its number.")
     return "\n".join(lines)
 
@@ -118,6 +127,11 @@ def memory_view(facts: list[dict]) -> str:
 
 # Every path should say something more useful. An invariant fails any scenario that reaches this.
 NOTHING_TO_SAY = "I have nothing to add right now. Tell me what you would like to do."
+
+MODEL_UNAVAILABLE = (
+    "I could not reach my local model, so I did not act on that message. Nothing was booked or changed by it, "
+    "and your details are saved. Replies like yes, no or an option number still work."
+)
 
 CAP_MESSAGES = {
     "model_calls": "I reached my limit on thinking steps",

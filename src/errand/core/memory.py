@@ -7,6 +7,9 @@ from errand.core.approval import reopen
 from errand.core.domain import Run, State
 from errand.core.when import normalise_time
 
+# Long enough to be a name, so that a stray letter cannot match inside a longer word or stand alone in a sentence.
+MIN_TECHNICIAN_CHARS = 2
+_TIME_IN_TEXT = re.compile(r"\b\d{1,2}(?::\d{2})?(?:\s*[ap]\.?m\.?)?", re.IGNORECASE)
 # Which run detail each memory fact fills in.
 DETAIL_FOR_KEY = {"area": "area", "earliest_time": "earliest_time", "preferred_technician": "provider_id"}
 _KEEP_WORDS = re.compile(r"\b(always|remember|from now on|every time)\b", re.IGNORECASE)
@@ -19,6 +22,8 @@ class InvalidMemoryValue(ValueError):
 
 def normalise_value(key: str, value: str) -> str:
     cleaned = value.strip()
+    if not cleaned:
+        raise InvalidMemoryValue(f"empty value for {key}")
     if key == "area":
         cleaned = cleaned.lower()
         if cleaned not in AREAS:
@@ -34,9 +39,28 @@ def normalise_value(key: str, value: str) -> str:
 def _said_by_user(key: str, value: str, text: str) -> bool:
     """A model may only suggest a value that appears in what the user actually typed."""
     if key == "earliest_time":
-        hour = int(value[:2])
-        return re.search(rf"\b0?({hour}|{hour % 12 or 12})\b", text) is not None
-    return value.lower() in text.lower()
+        return value in _times_in(text)
+    if len(value) < MIN_TECHNICIAN_CHARS:
+        return False
+    return re.search(rf"\b{re.escape(value.lower())}\b", text.lower()) is not None
+
+
+def _times_in(text: str) -> set[str]:
+    times = set()
+    for match in _TIME_IN_TEXT.finditer(text):
+        try:
+            times.add(normalise_time(match.group()))
+        except ValueError:
+            continue  # A number that is not a clock time, such as a price.
+    return times
+
+
+def check_proposal(key: str, value: str, text: str) -> str:
+    """Returns the value to keep, or raises if a model suggests something the user's own words do not contain."""
+    normalised = normalise_value(key, value)
+    if not _said_by_user(key, normalised, text):
+        raise InvalidMemoryValue(f"value is not in the user's message: {value!r}")
+    return normalised
 
 
 class Memory:
@@ -52,6 +76,7 @@ class Memory:
         self.store.save_memory_fact(turn.user_id, key, normalised, "stated", "active", evidence)
         turn.tracer.event("memory", key=key, provenance="stated", status="active")
         if run is not None:
+            self._drop_question_about(run, key)
             self._update_active_run(turn, run, key, normalised)
         return normalised
 
@@ -59,10 +84,7 @@ class Memory:
         self.store.save_memory_fact(turn.user_id, key, None, None, "forgotten", None)
         turn.tracer.event("memory", key=key, status="forgotten")
         if run is not None:
-            question = run.pending_question
-            if question and question["kind"] == "memory_confirm" and question["key"] == key:
-                run.pending_question = None
-                self.store.save_run(run)
+            self._drop_question_about(run, key)
             self._clear_from_active_run(turn, run, key)
 
     def infer(self, turn, key: str, value: str, evidence: str) -> None:
@@ -78,9 +100,7 @@ class Memory:
 
     def propose_from_model(self, turn, run: Run | None, key: str, value: str) -> None:
         """A model can only suggest. Code decides whether the user's own words make the fact stated."""
-        normalised = normalise_value(key, value)
-        if not _said_by_user(key, normalised, turn.text):
-            raise InvalidMemoryValue(f"value is not in the user's message: {value!r}")
+        normalised = check_proposal(key, value, turn.text)
         if _KEEP_WORDS.search(turn.text):
             self.state(turn, run, key, value, evidence="user message")
             turn.say(f"I will remember your {key.replace('_', ' ')}: {normalised}.")
@@ -138,6 +158,12 @@ class Memory:
             return run.workflow in ("book", "reschedule")
         return run.workflow in ("book", "reschedule", "cancel")
 
+    def _drop_question_about(self, run: Run, key: str) -> None:
+        question = run.pending_question
+        if question and question["kind"] == "memory_confirm" and question["key"] == key:
+            run.pending_question = None
+            self.store.save_run(run)
+
     def _update_active_run(self, turn, run: Run, key: str, value: str) -> None:
         detail = DETAIL_FOR_KEY[key]
         entry = run.details.get(detail)
@@ -149,6 +175,7 @@ class Memory:
             return
         else:
             entry["value"] = value
+        run.awaiting_change = False
         self._void_if_proposed(turn, run, "memory value changed")
 
     def _clear_from_active_run(self, turn, run: Run, key: str) -> None:
@@ -156,6 +183,7 @@ class Memory:
         if detail not in run.details:
             return
         del run.details[detail]
+        run.awaiting_change = False
         if self.store.open_attempt(run.id) is not None:
             run.forgotten_in_flight = True
             self.store.save_run(run)
