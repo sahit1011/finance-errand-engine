@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.env
+.errand/
+traces/
+FoundinEngineer-Assignment.pdf
+docs/diagrams/*.dot
+docs/diagrams/*.mmd
