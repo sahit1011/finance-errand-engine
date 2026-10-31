@@ -99,6 +99,9 @@ class Run:
     duplicate_cleared: bool = False
     # A search found nothing, so the run waits for the user to change a detail rather than searching again.
     awaiting_change: bool = False
+    no_match_reason: str = ""
+    # The day that reason was found. A later day can open new slots and can change what "today" means.
+    no_match_date: str = ""
     asked_inferred: list = field(default_factory=list)
     forgotten_in_flight: bool = False
     # Saved because a stop given while an outcome is unknown must still apply after a later message or a restart.

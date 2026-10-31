@@ -32,12 +32,12 @@ def test_missing_details_are_asked_once(env):
 
 def test_nothing_matching_names_the_dates_searched_so_a_misread_day_can_be_seen(env):
     env.start()
-    env.say("Find a plumber on Monday for Rs 1", intent("book", service="plumber", area="indiranagar", when="monday", budget=1))
+    env.say("Find a plumber on Monday after 11 at night", intent("book", service="plumber", area="indiranagar", when="monday", budget="no_limit", earliest_time="23:00"))
     reply = env.say("hello", {"actions": [], "done": True})
-    assert "Nothing matched for Mon 2 Nov" in reply
+    assert "for Mon 2 Nov" in reply
     env.say("this week then", details(when="this_week"))
     reply = env.say("hello", {"actions": [], "done": True})
-    assert "Nothing matched for Mon 2 Nov to Sun 8 Nov" in reply
+    assert "for Mon 2 Nov to Sun 8 Nov" in reply
 
 
 @scenario(3, "Correction", "One detail changes and the rest stay")

@@ -283,7 +283,7 @@ class Workflow:
             # A stop ends the turn even if a model asks to continue, because nothing is left to continue.
             if output.done or any(action["type"] == "stop" for action in output.actions):
                 if turn.run is None and not turn.lines:
-                    turn.say("I can book, reschedule or cancel home services. What would you like to do?")
+                    turn.say(render.WHAT_I_DO)
                 return
 
     def _model_input(self, turn: Turn, read_results: list[dict]) -> ModelInput:
@@ -479,9 +479,9 @@ class Workflow:
         if run.pending_question is not None:
             self._repeat_question(turn, run)
             return False
-        if run.awaiting_change:
-            searched = resolve_when(run.detail("when"), self.clock.now().date())
-            turn.say(f"Nothing matched for {render.dates_text(*searched)}. Try changing the time, area or budget.")
+        # A reason holds for the day it was found. After that, or for a run saved without one, it searches again.
+        if run.awaiting_change and run.no_match_date == self.clock.now().date().isoformat():
+            turn.say(run.no_match_reason)
             return False
         if run.workflow in ("reschedule", "cancel") and run.target_booking is None:
             if not self._find_target(turn, run):
@@ -519,6 +519,8 @@ class Workflow:
             run.options = self._build_options(run, providers, active)
         if not run.options:
             run.awaiting_change = True
+            run.no_match_reason = self._why_nothing_matched(run, service, providers, active, date_range)
+            run.no_match_date = self.clock.now().date().isoformat()
             move(self.store, turn.tracer, run, State.COLLECTING, "nothing matches")
             return
         move(self.store, turn.tracer, run, State.PRESENTING, "options found")
@@ -609,28 +611,52 @@ class Workflow:
             return ["booking"] if run.booking_choices else []
         return [key for key in REQUIRED_DETAILS[run.workflow] if run.detail(key) is None]
 
-    def _build_options(self, run: Run, providers: list[dict], active: list[dict]) -> list[dict]:
-        budget = run.detail("budget")
-        earliest = run.detail("earliest_time")
-        latest = run.detail("latest_time")
+    @staticmethod
+    def _is_wanted(run: Run, provider: dict) -> bool:
+        wanted = run.target_booking["provider"] if run.workflow == "reschedule" else run.detail("provider_id")
+        return wanted is None or wanted.lower() in (provider["id"], provider["name"].lower())
+
+    def _open_slots(self, run: Run, provider: dict, active: list[dict]) -> list[str]:
+        """Slots that are still ahead and not already ruled out, before any time limit the user set."""
         now_slot = self.clock.now().strftime("%Y-%m-%dT%H:%M")
         taken = {(b["provider"], b["slot"]) for b in active}
-        wanted_provider = run.target_booking["provider"] if run.workflow == "reschedule" else run.detail("provider_id")
+        return [slot for slot in provider["free_slots"] if slot > now_slot and f"{provider['id']}|{slot}" not in run.excluded and (provider["id"], slot) not in taken]
+
+    def _why_nothing_matched(self, run: Run, service: str, providers: list[dict], active: list[dict], date_range: tuple[str, str]) -> str:
+        """Names the filter that really decided it. Budget is only blamed if someone within the other limits would be free."""
+        area = run.detail("area")
+        wanted = [provider for provider in providers if self._is_wanted(run, provider)]
+        if not wanted:
+            return render.provider_not_found(service, area)
+        free = [provider for provider in wanted if self._within_time_limits(run, self._open_slots(run, provider, active))]
+        if not free:
+            if any(self._open_slots(run, provider, active) for provider in wanted):
+                return render.outside_time_limits(*date_range, run.detail("earliest_time"), run.detail("latest_time"))
+            return render.no_free_slots(*date_range)
+        # Someone is free and yet nothing was offered, so the budget is the only filter left.
+        budget = run.detail("budget")
+        cheapest_free = min(provider["price"] for provider in free)
+        if run.workflow == "reschedule" or run.detail("provider_id") is not None:
+            return render.above_this_provider(budget, cheapest_free)
+        if cheapest_free == min(provider["price"] for provider in wanted):
+            return render.below_budget(budget, service, area, cheapest_free)
+        return render.budget_blocks_free_slots(budget, *date_range, cheapest_free)
+
+    @staticmethod
+    def _within_time_limits(run: Run, slots: list[str]) -> list[str]:
+        earliest = run.detail("earliest_time")
+        latest = run.detail("latest_time")
+        return [slot for slot in slots if not (earliest and slot[11:16] < earliest) and not (latest and slot[11:16] >= latest)]
+
+    def _build_options(self, run: Run, providers: list[dict], active: list[dict]) -> list[dict]:
+        budget = run.detail("budget")
         candidates = []
         for provider in providers:
-            if wanted_provider is not None and wanted_provider.lower() not in (provider["id"], provider["name"].lower()):
+            if not self._is_wanted(run, provider):
                 continue
             if isinstance(budget, int) and provider["price"] > budget:
                 continue
-            slots = []
-            for slot in provider["free_slots"]:
-                clock_time = slot[11:16]
-                if slot <= now_slot or f"{provider['id']}|{slot}" in run.excluded or (provider["id"], slot) in taken:
-                    continue
-                if (earliest and clock_time < earliest) or (latest and clock_time >= latest):
-                    continue
-                slots.append(slot)
-            for slot in slots[:MAX_SLOTS_PER_PROVIDER]:
+            for slot in self._within_time_limits(run, self._open_slots(run, provider, active))[:MAX_SLOTS_PER_PROVIDER]:
                 candidates.append((provider["price"], -provider["rating"], slot, provider))
         candidates.sort(key=lambda c: (c[0], c[1], c[2]))
         return [
@@ -677,7 +703,7 @@ class Workflow:
         bookings = [b for b in self.gateway.list_bookings(turn, turn.user_id) if b["service"] == service]
         if not bookings:
             del run.details["provider"]
-            turn.say(f"I could not find an earlier {service} booking, so I will look at all providers.")
+            turn.say(f"I could not find an earlier {render.service_text(service)} booking, so I will look at all providers.")
             return
         latest = max(bookings, key=lambda b: b["slot"])
         run.details["provider_id"] = {"value": latest["provider"], "source": "user_this_run"}

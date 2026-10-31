@@ -2,22 +2,22 @@
  "id": "reschedule",
  "events": [
   {
-   "at": "2026-11-01T01:16:50.021443+05:30",
-   "ns": 1793476010021445000,
+   "at": "2026-11-01T02:08:08.600219+05:30",
+   "ns": 1793479088600222000,
    "type": "user_message",
    "message_id": 4,
    "text": "Move my carpenter to Wednesday",
    "seq": 1
   },
   {
-   "at": "2026-11-01T01:16:50.021520+05:30",
-   "ns": 1793476010021521000,
+   "at": "2026-11-01T02:08:08.600305+05:30",
+   "ns": 1793479088600306000,
    "type": "model_call_started",
    "seq": 2
   },
   {
-   "at": "2026-11-01T01:16:52.434382+05:30",
-   "ns": 1793476012434397000,
+   "at": "2026-11-01T02:08:11.044062+05:30",
+   "ns": 1793479091044083000,
    "type": "model_call",
    "model": "llama.cpp",
    "input": {
@@ -33,29 +33,29 @@
     "read_results": []
    },
    "raw_output": "{\"actions\":[{\"type\":\"set_intent\",\"intent\":\"reschedule\"},{\"type\":\"update_details\",\"details\":{\"service\":\"carpenter\"}},{\"type\":\"update_details\",\"details\":{\"when\":\"wednesday\"}}],\"done\":true}",
-   "latency_ms": 2412.84,
+   "latency_ms": 2443.72,
    "prompt_tokens": 1191,
    "completion_tokens": 45,
-   "compute_seconds": 2.395778,
+   "compute_seconds": 2.42829,
    "seq": 3
   },
   {
-   "at": "2026-11-01T01:16:52.438572+05:30",
-   "ns": 1793476012438582000,
+   "at": "2026-11-01T02:08:11.045583+05:30",
+   "ns": 1793479091045587000,
    "type": "run_started",
    "run_id": "run-2",
    "workflow": "reschedule",
    "seq": 4
   },
   {
-   "at": "2026-11-01T01:16:52.440849+05:30",
-   "ns": 1793476012440856000,
+   "at": "2026-11-01T02:08:11.046231+05:30",
+   "ns": 1793479091046232000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.18,
+   "latency_ms": 0.05,
    "result": [
     {
      "id": "booking-1",
@@ -68,33 +68,33 @@
    "seq": 5
   },
   {
-   "at": "2026-11-01T01:16:52.443381+05:30",
-   "ns": 1793476012443388000,
+   "at": "2026-11-01T02:08:11.047184+05:30",
+   "ns": 1793479091047186000,
    "type": "reply",
    "reply_id": 5,
-   "text": "To continue, please tell me which area you are in.",
+   "text": "To continue, please tell me which area you are in (Indiranagar, Koramangala, Whitefield or Jayanagar).",
    "state": "COLLECTING",
    "model_calls": 1,
    "tool_calls": 1,
    "seq": 6
   },
   {
-   "at": "2026-11-01T01:16:52.444734+05:30",
-   "ns": 1793476012444740000,
+   "at": "2026-11-01T02:08:11.047948+05:30",
+   "ns": 1793479091047952000,
    "type": "user_message",
    "message_id": 5,
    "text": "Jayanagar",
    "seq": 7
   },
   {
-   "at": "2026-11-01T01:16:52.450277+05:30",
-   "ns": 1793476012450282000,
+   "at": "2026-11-01T02:08:11.048194+05:30",
+   "ns": 1793479091048206000,
    "type": "model_call_started",
    "seq": 8
   },
   {
-   "at": "2026-11-01T01:16:53.769983+05:30",
-   "ns": 1793476013770013000,
+   "at": "2026-11-01T02:08:12.384156+05:30",
+   "ns": 1793479092384169000,
    "type": "model_call",
    "model": "llama.cpp",
    "input": {
@@ -115,15 +115,15 @@
     "read_results": []
    },
    "raw_output": "{\"actions\":[{\"type\":\"update_details\",\"details\":{\"area\":\"jayanagar\"}}],\"done\":true}",
-   "latency_ms": 1319.69,
+   "latency_ms": 1335.96,
    "prompt_tokens": 1209,
    "completion_tokens": 22,
-   "compute_seconds": 1.310549,
+   "compute_seconds": 1.325874,
    "seq": 9
   },
   {
-   "at": "2026-11-01T01:16:53.774122+05:30",
-   "ns": 1793476013774141000,
+   "at": "2026-11-01T02:08:12.389647+05:30",
+   "ns": 1793479092389654000,
    "type": "transition",
    "run_id": "run-2",
    "from_state": "COLLECTING",
@@ -132,8 +132,8 @@
    "seq": 10
   },
   {
-   "at": "2026-11-01T01:16:53.775508+05:30",
-   "ns": 1793476013775510000,
+   "at": "2026-11-01T02:08:12.391055+05:30",
+   "ns": 1793479092391057000,
    "type": "tool_call",
    "tool": "search_providers",
    "args": [
@@ -144,7 +144,7 @@
      "2026-11-04"
     ]
    ],
-   "latency_ms": 0.6,
+   "latency_ms": 0.65,
    "result": [
     {
      "id": "carpenter-jayanagar-1",
@@ -299,8 +299,8 @@
    "seq": 11
   },
   {
-   "at": "2026-11-01T01:16:53.782472+05:30",
-   "ns": 1793476013782481000,
+   "at": "2026-11-01T02:08:12.399180+05:30",
+   "ns": 1793479092399194000,
    "type": "transition",
    "run_id": "run-2",
    "from_state": "SEARCHING",
@@ -309,8 +309,8 @@
    "seq": 12
   },
   {
-   "at": "2026-11-01T01:16:53.786399+05:30",
-   "ns": 1793476013786411000,
+   "at": "2026-11-01T02:08:12.404526+05:30",
+   "ns": 1793479092404562000,
    "type": "reply",
    "reply_id": 6,
    "text": "Here are the options that fit:\n  1. Carpenter Partner 3 (Jayanagar): Wed 4 Nov, 08:00, ₹950, rated 4.6\n  2. Carpenter Partner 3 (Jayanagar): Wed 4 Nov, 10:00, ₹950, rated 4.6\nWhich one would you like? Reply with its number.",
@@ -320,16 +320,16 @@
    "seq": 13
   },
   {
-   "at": "2026-11-01T01:16:53.788081+05:30",
-   "ns": 1793476013788084000,
+   "at": "2026-11-01T02:08:12.406555+05:30",
+   "ns": 1793479092406559000,
    "type": "user_message",
    "message_id": 6,
    "text": "1",
    "seq": 14
   },
   {
-   "at": "2026-11-01T01:16:53.789308+05:30",
-   "ns": 1793476013789312000,
+   "at": "2026-11-01T02:08:12.407886+05:30",
+   "ns": 1793479092407891000,
    "type": "approval",
    "approval_id": "approval-2",
    "status": "pending",
@@ -340,8 +340,8 @@
    "seq": 15
   },
   {
-   "at": "2026-11-01T01:16:53.791048+05:30",
-   "ns": 1793476013791062000,
+   "at": "2026-11-01T02:08:12.409516+05:30",
+   "ns": 1793479092409521000,
    "type": "transition",
    "run_id": "run-2",
    "from_state": "PRESENTING",
@@ -350,8 +350,8 @@
    "seq": 16
   },
   {
-   "at": "2026-11-01T01:16:53.793449+05:30",
-   "ns": 1793476013793457000,
+   "at": "2026-11-01T02:08:12.413354+05:30",
+   "ns": 1793479092413363000,
    "type": "reply",
    "reply_id": 7,
    "text": "Please confirm exactly this:\n  Action:   Move to\n  Provider: Carpenter Partner 3 (Jayanagar)\n  Slot:     Wed 4 Nov, 08:00\n  Price:    ₹950\nReply yes to confirm, or no to decline.",
@@ -361,16 +361,16 @@
    "seq": 17
   },
   {
-   "at": "2026-11-01T01:16:53.795004+05:30",
-   "ns": 1793476013795012000,
+   "at": "2026-11-01T02:08:12.414860+05:30",
+   "ns": 1793479092414863000,
    "type": "user_message",
    "message_id": 7,
    "text": "yes",
    "seq": 18
   },
   {
-   "at": "2026-11-01T01:16:53.795697+05:30",
-   "ns": 1793476013795700000,
+   "at": "2026-11-01T02:08:12.415775+05:30",
+   "ns": 1793479092415795000,
    "type": "transition",
    "run_id": "run-2",
    "from_state": "AWAITING_APPROVAL",
@@ -379,8 +379,8 @@
    "seq": 19
   },
   {
-   "at": "2026-11-01T01:16:53.796473+05:30",
-   "ns": 1793476013796479000,
+   "at": "2026-11-01T02:08:12.416620+05:30",
+   "ns": 1793479092416623000,
    "type": "approval",
    "approval_id": "approval-2",
    "status": "approved",
@@ -389,8 +389,8 @@
    "seq": 20
   },
   {
-   "at": "2026-11-01T01:16:53.798736+05:30",
-   "ns": 1793476013798738000,
+   "at": "2026-11-01T02:08:12.419661+05:30",
+   "ns": 1793479092419665000,
    "type": "tool_call",
    "tool": "reschedule",
    "args": [
@@ -398,7 +398,7 @@
     "2026-11-04T08:00",
     "idem-approval-2"
    ],
-   "latency_ms": 1.79,
+   "latency_ms": 2.62,
    "result": {
     "id": "booking-1",
     "provider": "carpenter-jayanagar-3",
@@ -409,8 +409,8 @@
    "seq": 21
   },
   {
-   "at": "2026-11-01T01:16:53.800275+05:30",
-   "ns": 1793476013800277000,
+   "at": "2026-11-01T02:08:12.422902+05:30",
+   "ns": 1793479092422908000,
    "type": "transition",
    "run_id": "run-2",
    "from_state": "EXECUTING",
@@ -419,8 +419,8 @@
    "seq": 22
   },
   {
-   "at": "2026-11-01T01:16:53.800812+05:30",
-   "ns": 1793476013800815000,
+   "at": "2026-11-01T02:08:12.423367+05:30",
+   "ns": 1793479092423369000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
@@ -439,16 +439,16 @@
    "seq": 23
   },
   {
-   "at": "2026-11-01T01:16:53.801675+05:30",
-   "ns": 1793476013801677000,
+   "at": "2026-11-01T02:08:12.424830+05:30",
+   "ns": 1793479092424835000,
    "type": "approval",
    "approval_id": "approval-2",
    "status": "consumed",
    "seq": 24
   },
   {
-   "at": "2026-11-01T01:16:53.801974+05:30",
-   "ns": 1793476013801976000,
+   "at": "2026-11-01T02:08:12.425206+05:30",
+   "ns": 1793479092425208000,
    "type": "transition",
    "run_id": "run-2",
    "from_state": "VERIFYING",
@@ -457,15 +457,15 @@
    "seq": 25
   },
   {
-   "at": "2026-11-01T01:16:53.802588+05:30",
-   "ns": 1793476013802591000,
+   "at": "2026-11-01T02:08:12.427815+05:30",
+   "ns": 1793479092427818000,
    "type": "verified",
    "booking_id": "booking-1",
    "seq": 26
   },
   {
-   "at": "2026-11-01T01:16:53.803475+05:30",
-   "ns": 1793476013803479000,
+   "at": "2026-11-01T02:08:12.429880+05:30",
+   "ns": 1793479092429884000,
    "type": "reply",
    "reply_id": 9,
    "text": "Moved and verified: Carpenter Partner 3 (Jayanagar) is now on Wed 4 Nov, 08:00.",

@@ -85,7 +85,10 @@ reschedule if a booking exists. The CLI says so too if it discards typed-ahead i
 | Preferences | not before 10 a.m. | Value and source |
 
 The source is either `user_this_run` or `memory_stated`. The engine asks only for
-required details that have no value. A correction overwrites one detail and keeps the rest; if it
+required details that have no value, and it lists the available services and areas when it asks for them. When a search
+finds nothing, the reply names what is really in the way: a provider not found, no free slots, the time limit, or the budget
+with the cheapest price that is free. Budget is named only if someone is free within the other limits. A reason holds for
+the day it was found. A time limit can be changed, but not removed, in a run. A correction overwrites one detail and keeps the rest; if it
 affects a pending proposal, the proposal is voided. Budget and time filtering happen in code.
 
 ## Approval

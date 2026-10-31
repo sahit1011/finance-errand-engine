@@ -3,6 +3,7 @@
 import re
 from datetime import datetime
 
+from errand.contract import AREAS, SERVICES
 from errand.core.domain import Approval, Run
 
 # A display filter only. The real protection is that models cannot reach write tools or approvals.
@@ -12,9 +13,24 @@ _INJECTION = re.compile(
 )
 _LABEL_CHARS = 80
 
+
+
+def service_text(service: str) -> str:
+    return service.replace("_", " ").replace("ac ", "AC ")
+
+
+def _one_of(choices: list[str]) -> str:
+    return f"{', '.join(choices[:-1])} or {choices[-1]}"
+
+
+# Offered whenever these are asked for, because a person cannot name a choice they have never been told about.
+_SERVICE_CHOICES = _one_of([service_text(service) for service in SERVICES])
+_AREA_CHOICES = _one_of([area.title() for area in AREAS])
+WHAT_I_DO = f"I can book, reschedule or cancel a {_SERVICE_CHOICES} in {_AREA_CHOICES}. What would you like to do?"
+
 _DETAIL_QUESTIONS = {
-    "service": "which service you need",
-    "area": "which area you are in",
+    "service": f"which service you need ({_SERVICE_CHOICES})",
+    "area": f"which area you are in ({_AREA_CHOICES})",
     "when": "when you need it (for example this week, or Saturday)",
     "budget": "your budget in ₹ (or say no limit)",
     "booking": "which booking you mean",
@@ -38,12 +54,33 @@ def dates_text(start: str, end: str) -> str:
     return first if start == end else f"{first} to {datetime.fromisoformat(end).strftime('%a %-d %b')}"
 
 
-def service_text(service: str) -> str:
-    return service.replace("_", " ")
-
-
 def money(amount: int) -> str:
     return f"₹{amount:,}"
+
+
+def provider_not_found(service: str, area: str) -> str:
+    return f"I could not find that {service_text(service)} in {area.title()}. Try another area."
+
+
+def below_budget(budget: int, service: str, area: str, cheapest: int) -> str:
+    return f"Your budget of {money(budget)} is below the cheapest {service_text(service)} in {area.title()}, which is {money(cheapest)}. Change your budget, or say no limit."
+
+
+def above_this_provider(budget: int, price: int) -> str:
+    return f"Your budget of {money(budget)} is below this provider's price, {money(price)}. Change your budget, or say no limit."
+
+
+def budget_blocks_free_slots(budget: int, start: str, end: str, cheapest_free: int) -> str:
+    return f"Nothing within your budget of {money(budget)} is free for {dates_text(start, end)}. The cheapest that is free costs {money(cheapest_free)}. Change your budget, or say no limit."
+
+
+def no_free_slots(start: str, end: str) -> str:
+    return f"There are no free slots for {dates_text(start, end)}. Try another day."
+
+
+def outside_time_limits(start: str, end: str, earliest: str | None, latest: str | None) -> str:
+    limits = " and ".join(limit for limit in (f"after {earliest}" if earliest else None, f"before {latest}" if latest else None) if limit)
+    return f"No free slot for {dates_text(start, end)} fits your time limit ({limits}). Change the limit, or try another day."
 
 
 def ask_missing(missing: list[str]) -> str:

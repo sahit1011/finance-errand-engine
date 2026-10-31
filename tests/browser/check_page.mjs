@@ -8,8 +8,8 @@
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdtempSync } from "node:fs";
 const OUT = process.argv[2];
-const APP = "http://127.0.0.1:8765/";
-const SITE = "http://127.0.0.1:8766/";
+const APP = process.env.APP_URL ?? "http://127.0.0.1:8765/";
+const SITE = process.env.SITE_URL ?? "http://127.0.0.1:8766/";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const chrome = spawn("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", ["--headless=new", "--disable-gpu", "--remote-debugging-port=9333", `--user-data-dir=${mkdtempSync(OUT + "/profile-")}`, "--window-size=1500,1000", "about:blank"], { stdio: "ignore" });
 let target;
@@ -94,6 +94,26 @@ const afterStale = await (await fetch(APP + "api/state")).json();
 report(afterStale.run_state === "AWAITING_APPROVAL", "the newer proposal is still waiting, not approved", afterStale.run_state);
 await until(`[...document.querySelectorAll("#live-workflow .step")].some(s=>s.textContent.includes("hold_slot"))`, "newer session steps", 5000);
 report(await js(`![...document.querySelectorAll("#live-workflow .step")].some(s=>/(^|\\s)book\\b/.test(s.textContent))`), "no book call in the newer session");
+await js(`document.getElementById("preset").value="timeout_after_success"; document.getElementById("new-session").click();`);
+await sleep(300); await ready();
+await say("Find a plumber for my kitchen tap next week, mornings only, under ₹1,500.");
+await say("Indiranagar"); await say("1"); await say("yes");
+
+// A real conversation that used to dead-end: questions about the choices, and a budget below every price.
+await js(`document.getElementById("preset").value="normal"; document.getElementById("new-session").click();`);
+await sleep(300); await ready();
+let answer = await say("ok what all services you can help me with ?");
+report(answer.includes("plumber, electrician, AC service, carpenter or cleaner"), "a question about services gets the list", answer.slice(0, 90));
+answer = await say("my budget is 500, and i am currently staying in indiranagar bngl, i need it next week, but what services do we have ?");
+report(answer.includes("plumber, electrician, AC service, carpenter or cleaner"), "the list is still there while the service is missing");
+answer = await say("i need an electrician as my fan is not working properly");
+report(answer.includes("Your budget of ₹500 is below the cheapest electrician in Indiranagar"), "the reply names the budget as the problem", answer.slice(0, 110));
+answer = await say("any time works for me");
+report(answer.includes("Your budget of ₹500"), "a message that changes nothing still says why");
+answer = await say("no limit");
+report(answer.includes("Here are the options"), "changing the budget gets out of the dead end");
+await shot("13-dead-end-fixed");
+await say("stop");
 await js(`document.getElementById("preset").value="timeout_after_success"; document.getElementById("new-session").click();`);
 await sleep(300); await ready();
 await say("Find a plumber for my kitchen tap next week, mornings only, under ₹1,500.");

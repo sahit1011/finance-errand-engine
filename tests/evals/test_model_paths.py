@@ -501,3 +501,200 @@ def test_a_model_that_keeps_going_after_a_stop_is_not_called_again(env):
     assert len(env.model.inputs) == calls + 1
     assert env.run().state == State.ABANDONED
     assert "went wrong" not in reply
+
+
+# When nothing matches, the reply must say which thing is in the way, or the user has no way out.
+
+
+def cheapest_seen(env) -> int:
+    return min(provider["price"] for provider in env.tool_calls("search_providers")[-1]["result"])
+
+
+def test_a_budget_below_every_price_says_so_and_names_the_cheapest(env):
+    env.start()
+    reply = env.say("electrician in Indiranagar next week, budget 500", intent("book", service="electrician", area="indiranagar", when="next_week", budget=500))
+    assert "Your budget of ₹500 is below the cheapest electrician in Indiranagar" in reply
+    assert f"₹{cheapest_seen(env):,}" in reply
+    assert "no limit" in reply
+
+
+def test_your_conversation_gets_out_of_the_dead_end(env):
+    env.start()
+    reply = env.say("what all services can you help me with", intent("book"))
+    assert "plumber, electrician, AC service, carpenter or cleaner" in reply
+    assert "Indiranagar, Koramangala, Whitefield or Jayanagar" in reply
+    reply = env.say("budget 500, indiranagar, next week", details(budget=500, area="indiranagar", when="next_week"))
+    assert "plumber, electrician, AC service, carpenter or cleaner" in reply
+    env.say("i need an electrician as my fan is not working", details(service="electrician"))
+    reply = env.say("any time works for me", NOTHING)
+    assert "Your budget of ₹500 is below the cheapest electrician" in reply
+    reply = env.say("no limit", details(budget="no_limit"))
+    assert "Here are the options" in reply
+
+
+def test_a_message_that_changes_nothing_does_not_search_again(env):
+    env.start()
+    env.say("electrician, budget 500", intent("book", service="electrician", area="indiranagar", when="next_week", budget=500))
+    searches = len(env.tool_calls("search_providers"))
+    reply = env.say("any time works", NOTHING)
+    assert len(env.tool_calls("search_providers")) == searches
+    assert "Your budget" in reply
+
+
+def test_a_generous_budget_is_not_blamed_when_time_is_the_cause(env):
+    env.start()
+    env.say("plumber", intent("book", service="plumber", area="indiranagar", when="next_week", budget=2600, earliest_time="23:00"))
+    reply = env.say("hello", NOTHING)
+    assert "Your budget" not in reply
+    assert "after 23:00" in reply
+
+
+def test_a_limit_on_the_latest_time_is_named(env):
+    env.start()
+    reply = env.say("plumber before 1am", intent("book", service="plumber", area="indiranagar", when="next_week", budget="no_limit", latest_time="01:00"))
+    assert "before 01:00" in reply
+
+
+def test_both_time_limits_are_named(env):
+    env.start()
+    reply = env.say("plumber between 23:00 and 23:30", intent("book", service="plumber", area="indiranagar", when="next_week", budget="no_limit", earliest_time="23:00", latest_time="23:30"))
+    assert "after 23:00" in reply and "before 23:30" in reply
+
+
+def test_a_day_with_no_slots_left_says_so_and_names_the_day(env):
+    env.start()
+    env.clock.advance(hours=14, minutes=30)
+    reply = env.say("plumber today", intent("book", service="plumber", area="indiranagar", when="today", budget="no_limit"))
+    assert "no free slots" in reply and "Mon 2 Nov" in reply
+    assert "Your budget" not in reply and "after" not in reply
+
+
+def test_a_reschedule_in_the_wrong_area_says_the_provider_was_not_found(env):
+    env.start(Scenario(seeded_bookings=[PLUMBER]))
+    reply = env.say("Move my plumber to next week", intent("reschedule", service="plumber", when="next_week", area="koramangala"))
+    assert "could not find" in reply and "Koramangala" in reply
+    assert "Your budget" not in reply
+
+
+def test_a_requested_provider_above_budget_is_named_as_the_budget_problem(env):
+    past = {"id": "b-old", "provider": "plumber-indiranagar-2", "service": "plumber", "slot": "2026-10-20T11:00", "status": "completed"}
+    env.start(Scenario(seeded_bookings=[past]))
+    reply = env.say("same plumber, budget 1", intent("book", service="plumber", provider="same_as_last", area="indiranagar", when="next_week", budget=1))
+    assert "Your budget of ₹1 is below this provider's price" in reply
+    assert "cheapest" not in reply
+
+
+def test_correcting_the_blocking_detail_clears_the_message(env):
+    env.start()
+    env.say("plumber, budget 1", intent("book", service="plumber", area="indiranagar", when="next_week", budget=1))
+    reply = env.say("make it 5000", details(budget=5000))
+    assert "Here are the options" in reply and "Your budget" not in reply
+
+
+# What the agent can do.
+
+
+def test_a_message_with_no_errand_says_what_the_agent_can_do(env):
+    env.start()
+    reply = env.say("what can you do", NOTHING)
+    assert "plumber, electrician, AC service, carpenter or cleaner" in reply
+    assert "Indiranagar, Koramangala, Whitefield or Jayanagar" in reply
+
+
+def test_a_question_lists_only_the_choices_it_asks_about(env):
+    env.start()
+    reply = env.say("plumber please", intent("book", service="plumber"))
+    assert "Indiranagar, Koramangala, Whitefield or Jayanagar" in reply
+    assert "electrician" not in reply
+
+
+# A reason that is confidently false is worse than a vague one.
+
+
+def prices_and_slots(env) -> list[tuple[int, list[str]]]:
+    return sorted((p["price"], p["free_slots"]) for p in env.tool_calls("search_providers")[-1]["result"])
+
+
+def test_one_provider_above_budget_is_not_called_the_cheapest_of_its_service(env):
+    past = {"id": "b-old", "provider": "plumber-indiranagar-5", "service": "plumber", "slot": "2026-10-20T11:00", "status": "completed"}
+    env.start(Scenario(seeded_bookings=[past]))
+    env.say("Find plumbers", intent("book", service="plumber", area="indiranagar", when="next_week", budget="no_limit"))
+    prices = {p["id"]: p["price"] for p in env.tool_calls("search_providers")[-1]["result"]}
+    env.say("stop")
+    price = prices["plumber-indiranagar-5"]
+    assert price > min(prices.values()), "the test needs a provider that is not the cheapest"
+    reply = env.say("same plumber as last time", intent("book", service="plumber", provider="same_as_last", area="indiranagar", when="next_week", budget=price - 50))
+    assert "cheapest" not in reply
+    assert f"this provider's price, ₹{price:,}" in reply
+
+
+def test_a_reschedule_with_a_budget_talks_about_that_provider(env):
+    env.start(Scenario(seeded_bookings=[PLUMBER]))
+    reply = env.say("Move my plumber, budget 1", intent("reschedule", service="plumber", when="next_week", area="indiranagar", budget=1))
+    assert "this provider's price" in reply and "cheapest" not in reply
+
+
+def test_free_slots_at_a_higher_price_are_not_reported_as_no_free_slots(env):
+    env.start()
+    env.clock.advance(hours=3, minutes=30)
+    reply = env.say("plumber today, budget 650", intent("book", service="plumber", area="indiranagar", when="today", budget=650))
+    now = env.clock.now().strftime("%Y-%m-%dT%H:%M")
+    free = [(price, slots) for price, slots in prices_and_slots(env) if any(slot > now for slot in slots)]
+    assert free and min(price for price, _ in free) > 650, "the test needs only dearer providers to be free"
+    assert "no free slots" not in reply
+    assert "Nothing within your budget of ₹650 is free" in reply
+    assert f"₹{min(price for price, _ in free):,}" in reply
+
+
+def test_a_time_limit_is_not_blamed_when_a_dearer_provider_fits_it(env):
+    env.start()
+    reply = env.say("plumber today after 13:00, budget 650", intent("book", service="plumber", area="indiranagar", when="today", budget=650, earliest_time="13:00"))
+    free = [price for price, slots in prices_and_slots(env) if any(slot[11:16] >= "13:00" for slot in slots)]
+    assert free and min(free) > 650, "the test needs only dearer providers to fit the limit"
+    assert "time limit" not in reply
+    assert "Nothing within your budget of ₹650 is free" in reply
+
+
+def test_a_time_limit_nobody_fits_is_named_even_with_a_small_budget(env):
+    env.start()
+    reply = env.say("plumber after 23:00, budget 650", intent("book", service="plumber", area="indiranagar", when="next_week", budget=650, earliest_time="23:00"))
+    assert "after 23:00" in reply and "budget" not in reply.lower()
+
+
+def test_a_reason_does_not_outlive_its_day(env):
+    env.start()
+    env.clock.advance(hours=14, minutes=30)
+    assert "no free slots for Mon 2 Nov" in env.say("plumber today", intent("book", service="plumber", area="indiranagar", when="today", budget="no_limit"))
+    searches = len(env.tool_calls("search_providers"))
+    env.clock.advance(hours=10)
+    reply = env.say("today please", details(when="today"))
+    assert len(env.tool_calls("search_providers")) == searches + 1
+    assert "Mon 2 Nov" not in reply
+    assert "Here are the options" in reply
+
+
+def test_a_run_saved_before_reasons_were_kept_searches_again(env):
+    env.start()
+    env.say("plumber, budget 1", intent("book", service="plumber", area="indiranagar", when="next_week", budget=1))
+    run = env.run()
+    run.no_match_reason = ""
+    run.no_match_date = ""
+    env.store.save_run(run)
+    searches = len(env.tool_calls("search_providers"))
+    reply = env.say("hello", NOTHING)
+    assert len(env.tool_calls("search_providers")) == searches + 1
+    assert "Your budget of ₹1" in reply
+
+
+def test_a_latest_time_excludes_its_own_slot_and_an_earliest_time_includes_its_own(env):
+    env.start()
+    env.say("plumber", intent("book", service="plumber", area="indiranagar", when="next_week", budget="no_limit", earliest_time="11:00", latest_time="12:00"))
+    provider = {"id": "p-1", "name": "P", "price": 100, "rating": 4.0, "free_slots": ["2026-11-03T10:00", "2026-11-03T11:00", "2026-11-03T12:00"], "attributes": []}
+    options = env.engine.workflow._build_options(env.run(), [provider], [])
+    assert [o["slot"] for o in options] == ["2026-11-03T11:00"]
+
+
+def test_same_as_last_with_no_history_names_the_service_in_plain_words(env):
+    env.start()
+    reply = env.say("the same AC person", intent("book", service="ac_service", provider="same_as_last"))
+    assert "earlier AC service booking" in reply
