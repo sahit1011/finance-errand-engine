@@ -1,6 +1,6 @@
 # Errand Agent: Development Plan
 
-We build nine vertical slices, and each ends in something runnable with its own proof. Core work comes
+We build ten vertical slices, and each ends in something runnable with its own proof. Core work comes
 first and needs no installs. Model work comes after the must-haves are solid, as the assignment asks.
 
 Slices 1-7, 9 and 10 are built. Slice 8 is built apart from the demo recording, which the author must record.
