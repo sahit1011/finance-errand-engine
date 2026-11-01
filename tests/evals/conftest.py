@@ -1,10 +1,12 @@
 """Collects each scenario's result and generates the eval table from the test run."""
 
+import importlib
 import json
 from pathlib import Path
 
 import pytest
 
+from harness import DECLARED_SCENARIOS, RAN_SCENARIOS
 from harness import SCENARIOS as _scenarios
 from harness import EvalEnv
 
@@ -27,8 +29,26 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
+def _why_the_table_is_incomplete() -> str | None:
+    """Imports every eval file so that all scenarios are declared, even those in files this run did not collect."""
+    for path in Path(__file__).parent.glob("test_*.py"):
+        try:
+            importlib.import_module(path.stem)
+        except (ImportError, SyntaxError) as error:
+            return f"{path.name} could not be imported ({type(error).__name__})"
+    unrun = DECLARED_SCENARIOS - RAN_SCENARIOS
+    return f"{len(unrun)} of {len(DECLARED_SCENARIOS)} scenarios did not run" if unrun else None
+
+
 def pytest_sessionfinish(session, exitstatus):
     if not _scenarios:
+        return
+    # The table describes the whole suite, so a filtered or stopped run must not replace it with part of one.
+    reason = _why_the_table_is_incomplete()
+    if reason:
+        reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+        if reporter is not None:
+            reporter.write_line(f"eval table not written: {reason}")
         return
     rows = sorted(_scenarios.values(), key=lambda row: row["number"])
     passed = sum(1 for row in rows if row["result"] == "PASS")

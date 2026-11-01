@@ -227,14 +227,21 @@ class EvalEnv:
 
 
 SCENARIOS: dict[str, dict] = {}
+# Every scenario that exists and every one that ran, by module and name, so that a shared name cannot hide one.
+DECLARED_SCENARIOS: set[str] = set()
+RAN_SCENARIOS: set[str] = set()
 
 
 def scenario(number: int, name: str, expected: str):
     """Marks a test as an eval scenario. Invariants run after its body, so every scenario checks them."""
 
     def decorate(body):
+        key = f"{body.__module__}.{body.__name__}"
+        DECLARED_SCENARIOS.add(key)
+
         @functools.wraps(body)
         def run(env):
+            RAN_SCENARIOS.add(key)
             entry = SCENARIOS.setdefault(body.__name__, {"number": number, "name": name, "expected": expected, "actual": "", "notes": "", "result": "FAIL"})
             try:
                 body(env)
