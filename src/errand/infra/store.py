@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS attempts (
     id TEXT PRIMARY KEY, approval_id TEXT UNIQUE, idempotency_key TEXT, hold_id TEXT, status TEXT, retries INTEGER,
     returned_booking_id TEXT, contradiction_seen INTEGER);
 CREATE TABLE IF NOT EXISTS booking_prices (booking_id TEXT PRIMARY KEY, price INTEGER);
+CREATE TABLE IF NOT EXISTS booking_places (booking_id TEXT PRIMARY KEY, area TEXT, provider_name TEXT);
 CREATE TABLE IF NOT EXISTS memory_facts (
     user_id TEXT, key TEXT, value TEXT, provenance TEXT, status TEXT, evidence TEXT, updated_at TEXT,
     PRIMARY KEY (user_id, key));
@@ -207,6 +208,15 @@ class Store:
     def booking_price(self, booking_id: str) -> int | None:
         row = self._db.execute("SELECT price FROM booking_prices WHERE booking_id = ?", (booking_id,)).fetchone()
         return None if row is None else row["price"]
+
+    # Where a booking the agent made is, which the provider's own booking record does not say.
+
+    def save_booking_place(self, booking_id: str, area: str, provider_name: str) -> None:
+        self._db.execute("INSERT OR REPLACE INTO booking_places (booking_id, area, provider_name) VALUES (?, ?, ?)", (booking_id, area, provider_name))
+
+    def booking_place(self, booking_id: str) -> dict | None:
+        row = self._db.execute("SELECT area, provider_name FROM booking_places WHERE booking_id = ?", (booking_id,)).fetchone()
+        return None if row is None else dict(row)
 
     # Memory.
 

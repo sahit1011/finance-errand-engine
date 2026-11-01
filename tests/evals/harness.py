@@ -144,7 +144,8 @@ class EvalEnv:
         self._no_review_text_reached_a_model()
         self._every_write_followed_its_approval()
         if not self.allow_engine_error:
-            errors = [e for e in self.trace_events() if e["type"] == "error" and e["where"] == "turn"]
+            # A scripted model with nothing left looks like an outage, so an unplanned model call also fails here.
+            errors = [e for e in self.trace_events() if e["type"] == "error" and e["where"] in ("turn", "model")]
             assert not errors, f"engine hit an unexpected error: {errors}"
 
     def observed(self) -> str:

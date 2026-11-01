@@ -92,6 +92,17 @@ def test_evals_notice_when_review_text_reaches_a_model(env, monkeypatch):
     fails(hardening.test_injection_in_review_with_hijacked_model, env)
 
 
+def test_evals_notice_when_a_model_can_approve(env, monkeypatch):
+    """The rule the assignment names: approval must not be inferred from model output."""
+    from test_understanding import test_a_worded_yes_read_by_a_model_never_approves as worded_yes
+
+    def approves_for_real(self, turn, answer):
+        self._answer(turn, Intake(Kind.YES if answer == "yes" else Kind.NO), self.store.approval(turn.run.pending_question["approval_id"]).shown_reply_id)
+
+    monkeypatch.setattr(workflow_module.Workflow, "_answer_from_model", approves_for_real)
+    fails(worded_yes, env)
+
+
 def test_evals_notice_a_double_booking_in_the_ledger(env):
     """The invariant reads the ledger, so it catches a duplicate whatever the agent says."""
     env.start(Scenario(book_outcomes=[OUTCOME_SUCCESS, OUTCOME_SUCCESS]))

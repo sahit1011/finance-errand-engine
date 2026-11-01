@@ -1,7 +1,8 @@
 """The model interface: models turn user text into structured actions and can do nothing else.
 
 No action type exists for hold, book, cancel, reschedule or approve, so a hijacked model has nothing to ask for.
-The one action with an effect of its own is stop, which spends nothing: the worst a wrong stop can do is end an errand.
+A model may read a stop, a memory request or a worded answer, because a wrong one spends nothing. It can never approve:
+the engine treats a worded yes to a proposal as a prompt to ask for a bare one.
 """
 
 import json
@@ -22,6 +23,10 @@ ACTION_FIELDS = {
     "propose_memory": {"key", "value"},
     "need_clarification": set(),
     "stop": set(),
+    "show_memory": set(),
+    "forget_memory": {"key"},
+    "correct_memory": {"key", "value"},
+    "answer_question": {"answer"},
 }
 
 
@@ -65,6 +70,11 @@ class ModelOutput:
     done: bool
 
 
+def without_answer_beside_a_change(actions: list[dict]) -> list[dict]:
+    """"Yes, but make it after 11" can come back as both a yes and the change. The change is what the person means."""
+    return actions if len(actions) == 1 else [action for action in actions if action["type"] != "answer_question"]
+
+
 def parse_output(raw: object) -> ModelOutput:
     """Validates shape at the boundary. Whether an action fits the current state is checked by the workflow."""
     if isinstance(raw, str):
@@ -85,7 +95,7 @@ def parse_output(raw: object) -> ModelOutput:
     done = raw.get("done", True)
     if not isinstance(done, bool):
         raise InvalidModelOutput("done must be true or false")
-    return ModelOutput(actions=actions, done=done)
+    return ModelOutput(actions=without_answer_beside_a_change(actions), done=done)
 
 
 def _validate_action(action: object) -> None:
@@ -105,5 +115,9 @@ def _validate_action(action: object) -> None:
         raise InvalidModelOutput(f"option must be a number: {action.get('option')!r}")
     if kind == "request_read" and action.get("tool") not in READ_TOOLS:
         raise InvalidModelOutput(f"tool not readable by a model: {action.get('tool')!r}")
-    if kind == "propose_memory" and (action.get("key") not in MEMORY_KEYS or not isinstance(action.get("value"), str)):
+    if kind in ("propose_memory", "correct_memory") and (action.get("key") not in MEMORY_KEYS or not isinstance(action.get("value"), str)):
         raise InvalidModelOutput(f"bad memory proposal: {action!r}")
+    if kind == "forget_memory" and action.get("key") not in MEMORY_KEYS:
+        raise InvalidModelOutput(f"bad memory key: {action!r}")
+    if kind == "answer_question" and action.get("answer") not in ("yes", "no"):
+        raise InvalidModelOutput(f"bad answer: {action!r}")

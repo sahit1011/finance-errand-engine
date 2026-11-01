@@ -285,7 +285,7 @@
    "name": "Message during an in-flight write",
    "expected": "The write finishes, the message is reported as not applied, and a reschedule is offered",
    "actual": "state=DONE; bookings=1; cancels=0; reschedules=0; approvals=['consumed']; book calls=1; status reads=4",
-   "notes": "Message not sent to the model; outcome verified first; user told it was not applied and offered a reschedule",
+   "notes": "Only a stop could come of the message; outcome verified first; user told it was not applied and offered a reschedule",
    "result": "PASS"
   },
   {
@@ -351,181 +351,205 @@
    "actual": "state=ABANDONED; bookings=0; cancels=0; reschedules=0; approvals=['voided']; book calls=0; status reads=0",
    "notes": "The model's stop abandoned the run and voided the proposal; the later yes found nothing to approve",
    "result": "PASS"
+  },
+  {
+   "number": 45,
+   "name": "A worded yes read by a model",
+   "expected": "No approval and no write; the user is asked for a bare yes, and that then books once",
+   "actual": "state=DONE; bookings=1; cancels=0; reschedules=0; approvals=['consumed']; book calls=1; status reads=1",
+   "notes": "The model read a yes, and the engine asked for a typed one; only the typed yes booked, once",
+   "result": "PASS"
+  },
+  {
+   "number": 46,
+   "name": "Memory requests in any words",
+   "expected": "A model reads view, correct and forget; the old and forgotten values are not reused",
+   "actual": "state=no run; bookings=0; cancels=0; reschedules=0; approvals=[]; book calls=0; status reads=0",
+   "notes": "Viewed, corrected and forgot with no exact phrase; the forgotten value stayed gone",
+   "result": "PASS"
+  },
+  {
+   "number": 47,
+   "name": "A stop in any words while a write is in flight",
+   "expected": "A model reads the stop, no retry happens, and nothing is booked",
+   "actual": "state=ABANDONED; bookings=0; cancels=0; reschedules=0; approvals=['voided']; book calls=1; status reads=4",
+   "notes": "The stop was read while the outcome was unknown; no retry, nothing booked",
+   "result": "PASS"
   }
  ],
  "routing": {
   "test": [
    {
     "name": "Cheap LLM only",
-    "correct": 49,
-    "wrong": 4,
-    "total": 55,
-    "p50": 1.023,
-    "p95": 4.958,
-    "compute": 73.335,
-    "tokens": 72736,
+    "correct": 59,
+    "wrong": 7,
+    "total": 69,
+    "p50": 1.341,
+    "p95": 3.044,
+    "compute": 105.241,
+    "tokens": 110236,
     "routes": {
      "none": 0,
-     "cheap": 55,
+     "cheap": 69,
      "strong": 0
     }
    },
    {
     "name": "Strong LLM only",
-    "correct": 50,
-    "wrong": 4,
-    "total": 55,
-    "p50": 2.006,
-    "p95": 4.273,
-    "compute": 123.276,
-    "tokens": 72359,
+    "correct": 61,
+    "wrong": 7,
+    "total": 69,
+    "p50": 1.92,
+    "p95": 4.044,
+    "compute": 146.257,
+    "tokens": 110135,
     "routes": {
      "none": 0,
      "cheap": 0,
-     "strong": 55
+     "strong": 69
     }
    },
    {
     "name": "Perfect router (upper bound, uses the answers)",
-    "correct": 53,
-    "wrong": 1,
-    "total": 55,
-    "p50": 0.997,
-    "p95": 4.958,
-    "compute": 66.006,
-    "tokens": 60620,
+    "correct": 66,
+    "wrong": 2,
+    "total": 69,
+    "p50": 1.339,
+    "p95": 3.044,
+    "compute": 96.504,
+    "tokens": 94032,
     "routes": {
-     "none": 9,
-     "cheap": 46,
-     "strong": 0
+     "none": 10,
+     "cheap": 57,
+     "strong": 2
     }
    },
    {
     "name": "Cheap LLM routes itself",
-    "correct": 45,
-    "wrong": 3,
-    "total": 55,
-    "p50": 2.483,
-    "p95": 5.028,
-    "compute": 132.789,
-    "tokens": 56198,
+    "correct": 48,
+    "wrong": 7,
+    "total": 69,
+    "p50": 2.372,
+    "p95": 4.630000000000001,
+    "compute": 154.011,
+    "tokens": 80927,
     "routes": {
-     "none": 12,
+     "none": 18,
      "cheap": 1,
-     "strong": 42
+     "strong": 50
     }
    },
    {
-    "name": "EmbeddingGemma 2, nearest dev turn (threshold 0.9)",
-    "correct": 47,
-    "wrong": 4,
-    "total": 55,
-    "p50": 1.5534999999999999,
-    "p95": 4.287,
-    "compute": 101.801,
-    "tokens": 65543,
+    "name": "EmbeddingGemma 2, nearest dev turn (threshold 0.86)",
+    "correct": 61,
+    "wrong": 5,
+    "total": 69,
+    "p50": 1.4488999999999999,
+    "p95": 3.5641,
+    "compute": 112.1441,
+    "tokens": 105222,
     "routes": {
-     "none": 5,
-     "cheap": 15,
-     "strong": 35
+     "none": 3,
+     "cheap": 46,
+     "strong": 20
     }
    }
   ],
   "dev": [
    {
     "name": "Cheap LLM only",
-    "correct": 53,
-    "wrong": 9,
-    "total": 63,
-    "p50": 1.042,
-    "p95": 4.01,
-    "compute": 87.461,
-    "tokens": 82102,
+    "correct": 68,
+    "wrong": 7,
+    "total": 77,
+    "p50": 1.282,
+    "p95": 4.468,
+    "compute": 126.477,
+    "tokens": 122182,
     "routes": {
      "none": 0,
-     "cheap": 63,
+     "cheap": 77,
      "strong": 0
     }
    },
    {
     "name": "Strong LLM only",
-    "correct": 59,
-    "wrong": 2,
-    "total": 63,
-    "p50": 1.912,
-    "p95": 5.928,
-    "compute": 152.059,
-    "tokens": 81780,
+    "correct": 69,
+    "wrong": 5,
+    "total": 77,
+    "p50": 1.905,
+    "p95": 4.739,
+    "compute": 176.341,
+    "tokens": 122048,
     "routes": {
      "none": 0,
      "cheap": 0,
-     "strong": 63
+     "strong": 77
     }
    },
    {
     "name": "Perfect router (upper bound, uses the answers)",
-    "correct": 61,
-    "wrong": 2,
-    "total": 63,
-    "p50": 1.016,
-    "p95": 3.667,
-    "compute": 79.264,
-    "tokens": 68945,
+    "correct": 73,
+    "wrong": 3,
+    "total": 77,
+    "p50": 1.294,
+    "p95": 4.468,
+    "compute": 119.663,
+    "tokens": 106457,
     "routes": {
      "none": 10,
-     "cheap": 49,
-     "strong": 4
+     "cheap": 65,
+     "strong": 2
     }
    },
    {
     "name": "Cheap LLM routes itself",
-    "correct": 53,
-    "wrong": 1,
-    "total": 63,
-    "p50": 2.403,
-    "p95": 6.54,
-    "compute": 167.474,
-    "tokens": 60798,
+    "correct": 57,
+    "wrong": 3,
+    "total": 77,
+    "p50": 2.261,
+    "p95": 5.42,
+    "compute": 186.199,
+    "tokens": 87090,
     "routes": {
-     "none": 16,
+     "none": 22,
      "cheap": 0,
-     "strong": 47
+     "strong": 55
     }
    },
    {
-    "name": "EmbeddingGemma 2, nearest dev turn (threshold 0.9)",
-    "correct": 55,
-    "wrong": 4,
-    "total": 63,
-    "p50": 1.7812999999999999,
-    "p95": 5.4243,
-    "compute": 133.2757,
-    "tokens": 80517,
+    "name": "EmbeddingGemma 2, nearest dev turn (threshold 0.86)",
+    "correct": 67,
+    "wrong": 6,
+    "total": 77,
+    "p50": 1.418,
+    "p95": 4.4823,
+    "compute": 139.754,
+    "tokens": 120470,
     "routes": {
      "none": 1,
-     "cheap": 17,
-     "strong": 45
+     "cheap": 50,
+     "strong": 26
     }
    }
   ],
   "all_turns": {
    "cheap": {
-    "correct": 102,
-    "wrong": 13,
-    "total": 118
+    "correct": 127,
+    "wrong": 14,
+    "total": 146
    },
    "strong": {
-    "correct": 109,
-    "wrong": 6,
-    "total": 118
+    "correct": 130,
+    "wrong": 12,
+    "total": 146
    }
   },
   "by_kind": [
    {
     "kind": "full_request",
     "turns": 14,
-    "cheap": 13,
-    "strong": 14
+    "cheap": 12,
+    "strong": 13
    },
    {
     "kind": "implied_service",
@@ -542,7 +566,7 @@
    {
     "kind": "answers",
     "turns": 12,
-    "cheap": 12,
+    "cheap": 11,
     "strong": 12
    },
    {
@@ -554,7 +578,7 @@
    {
     "kind": "choosing",
     "turns": 12,
-    "cheap": 10,
+    "cheap": 11,
     "strong": 11
    },
    {
@@ -578,7 +602,7 @@
    {
     "kind": "no_action",
     "turns": 10,
-    "cheap": 6,
+    "cheap": 9,
     "strong": 10
    },
    {
@@ -588,10 +612,28 @@
     "strong": 5
    },
    {
+    "kind": "memory_in_words",
+    "turns": 12,
+    "cheap": 12,
+    "strong": 10
+   },
+   {
+    "kind": "answers_in_words",
+    "turns": 10,
+    "cheap": 9,
+    "strong": 10
+   },
+   {
+    "kind": "memory_lookalikes",
+    "turns": 6,
+    "cheap": 1,
+    "strong": 2
+   },
+   {
     "kind": "stopping",
     "turns": 8,
     "cheap": 8,
-    "strong": 7
+    "strong": 6
    },
    {
     "kind": "stop_lookalikes",
@@ -602,22 +644,22 @@
    {
     "kind": "hinglish",
     "turns": 10,
-    "cheap": 7,
-    "strong": 8
+    "cheap": 8,
+    "strong": 9
    }
   ],
   "stops": {
    "cheap": {
     "found": 8,
     "real": 8,
-    "false": 3,
-    "other_turns": 110
+    "false": 0,
+    "other_turns": 138
    },
    "strong": {
-    "found": 7,
+    "found": 6,
     "real": 8,
     "false": 0,
-    "other_turns": 110
+    "other_turns": 138
    }
   },
   "answers": [

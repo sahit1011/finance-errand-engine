@@ -88,7 +88,7 @@ class Run:
     user_id: str
     state: State
     workflow: str
-    # Each detail is {"value": ..., "source": "user_this_run" | "memory_stated"}.
+    # Each detail is {"value": ..., "source": "user_this_run" | "memory_stated" | "booking"}.
     details: dict = field(default_factory=dict)
     options: list = field(default_factory=list)
     booking_choices: list = field(default_factory=list)

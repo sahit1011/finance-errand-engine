@@ -83,6 +83,13 @@ def outside_time_limits(start: str, end: str, earliest: str | None, latest: str 
     return f"No free slot for {dates_text(start, end)} fits your time limit ({limits}). Change the limit, or try another day."
 
 
+def what_a_move_can_do(service: str, provider: str, slot: str) -> str:
+    return f"Your {service_text(service)} is booked with {provider} on {slot_text(slot)}. A move keeps this provider. To change provider, cancel it and book again."
+
+
+TYPE_YES = "That sounds like a yes. To go ahead, please type yes or haan on its own, because only that can approve this."
+
+
 def ask_missing(missing: list[str]) -> str:
     return "To continue, please tell me " + " and ".join(_DETAIL_QUESTIONS[item] for item in missing) + "."
 

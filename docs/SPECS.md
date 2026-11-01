@@ -46,10 +46,11 @@ Two more moves are left out of the picture for readability. `COLLECTING`, `SEARC
 a per-run cap is reached. Moving to `FAILED` or `ABANDONED` voids any pending proposal and clears the
 pending question in the same transaction, so a later "yes" finds nothing to approve.
 
-Intake matches a bare stop in code, such as "stop", "never mind", "ruk jao" or "rehne do". Any other phrasing goes to the
-model, which may return a `stop` action, alone in its output. That is the one action with an effect of its own, and it spends
-nothing: the worst a wrong stop can do is end an errand. Models never run while a write is in flight, so at that moment
-only the phrases in code are recognised. A write in flight cannot be
+Exact phrases in code are a fast path, which needs no model. Every other wording goes to the model, which may return a stop, a
+memory request, or a worded answer to a question. A wrong one spends nothing: at worst it ends an errand or forgets a preference,
+and the reply says so. A worded answer beside a change counts as the change, so "yes, but make it after 11" is a correction.
+While a write is in flight, the model reads a message only for a stop, because a stop can prevent a retry and can never cause a
+write; if the model fails or says anything else, the check carries on. A write in flight cannot be
 abandoned, so a stop in `UNKNOWN_NEEDS_CHECK` rechecks status without retrying, and the stop is saved on the run so it
 still applies after a later message or a restart. If booked, the booking is
 reported and a cancel is offered. If `not_found` or `failed`, the approval is voided and the run moves to
@@ -72,8 +73,8 @@ that every slot on offer is still ahead. If one has passed, it says so, voids an
 message is not acted on. A stop still applies. A re-hold whose approved slot has passed voids the approval with no
 write.
 
-A message that arrives while a write is in flight or unknown is not acted on, apart from a stop or a
-memory command. The engine verifies the write, ends the turn with the result, says the message was not applied, and offers a
+A message that arrives while a write is in flight or unknown is not acted on, apart from a stop in any words, or a
+memory command in the exact words code recognises. The engine verifies the write, ends the turn with the result, says the message was not applied, and offers a
 reschedule if a booking exists. The CLI says so too if it discards typed-ahead input.
 
 | Detail | Example | Stored with |
@@ -84,7 +85,9 @@ reschedule if a booking exists. The CLI says so too if it discards typed-ahead i
 | Budget | ₹1,500 | Value and source |
 | Preferences | not before 10 a.m. | Value and source |
 
-The source is either `user_this_run` or `memory_stated`. The engine asks only for
+The source is `user_this_run`, `memory_stated`, or `booking` for the area of a booking the agent made, which a move or cancel
+reuses because the provider's booking record has no area. It is not reused once the user has asked to forget their area, until
+they state one again. The engine asks only for
 required details that have no value, and it lists the available services and areas when it asks for them. When a search
 finds nothing, the reply names what is really in the way: a provider not found, no free slots, the time limit, or the budget
 with the cheapest price that is free. Budget is named only if someone is free within the other limits. A reason holds for
@@ -104,8 +107,8 @@ affects a pending proposal, the proposal is voided. Budget and time filtering ha
   the proposal again, unless the command voided it.
 - **What counts as approval:** the raw user message, matched by code against a short list of bare
   confirmations in English and Hindi, such as "yes", "confirm", "haan" or "theek hai", while the pending question is
-  `approval`. No model sees this decision. A reply in another language re-shows the proposal. A confirmation that
-  names booking, such as "book it", cannot confirm a cancel or a reschedule.
+  `approval`. A model cannot grant it: if a model reads a yes in other words, the engine asks for a bare one and shows the
+  proposal again. A confirmation that names booking, such as "book it", cannot confirm a cancel or a reschedule.
 - **No stale approvals:** a "yes" counts only if it was sent after that proposal was shown. Each message
   carries the id of the last reply the client displayed, and the CLI discards typed-ahead input before
   prompting. A queued "yes" therefore cannot approve a new price the user has not seen.
@@ -161,8 +164,8 @@ told the booking is unchanged. A `slot_conflict` voids the approval and leaves t
 place.
 
 A reschedule keeps the same provider, because `reschedule` has no provider argument. Its options are
-filtered to that provider. Changing provider means a separate cancel and a new booking, each with its
-own approval.
+filtered to that provider, and when the engine asks for the new time, it says so. Changing provider means a separate cancel
+and a new booking, each with its own approval.
 
 Before proposing, the engine reads `list_bookings`. It blocks the same provider and slot, and asks
 first if the same service is already booked and active.
@@ -299,7 +302,7 @@ These invariants run after every scenario:
 | 33 | Status check gives no answer | `UNKNOWN_NEEDS_CHECK` reported; new keys blocked; next message rechecks and exits on an answer | Yes |
 | 34 | "Yes" to a memory question before any proposal | Confirms the fact only; no approval record or hold | |
 | 35 | Per-run cap reached with a proposal pending | Run moves to `FAILED` with a message; proposal voided; a later "yes" approves nothing; a new errand can start | Yes |
-| 36 | Message during an in-flight write | Write finishes; message reported as not applied; reschedule offered | |
+| 36 | Message during an in-flight write | Write finishes; only a stop could come of the message; reported as not applied; reschedule offered | |
 | 37 | Crash after saving success, before the reply | Next start reports the booking; no second booking | Yes |
 | 38 | Stop with a proposal pending | Run moves to `ABANDONED`; proposal voided; a later "yes" approves nothing; a new errand can start | |
 | 39 | `book` success contradicted by status | Not reported as booked; one recheck; then the status is final | Yes |
@@ -308,6 +311,9 @@ These invariants run after every scenario:
 | 42 | Seeded cancel with no price available | No approval or write; run moves to `FAILED`; booking unchanged | |
 | 43 | Bare Hindi approval | Approves the exact terms once in code, with no model; a condition or a question does not approve | |
 | 44 | Stop understood by a model | Abandons with the proposal voided and no write; a later "yes" approves nothing | |
+| 45 | A worded yes read by a model | No approval or write; asks for a bare yes, which then books once | Yes |
+| 46 | Memory requests in any words | View, correct and forget work; old and forgotten values are not reused | |
+| 47 | A stop in any words while a write is in flight | No retry; nothing booked | |
 
 ## Live model
 
@@ -319,12 +325,12 @@ These invariants run after every scenario:
 - **All or nothing:** every action in an output is checked before any applies, so a rejected output changes nothing. It may hold one selection and one intent at most.
 - **Settings:** temperature 0, thinking off, at most 512 output tokens. These are our choices.
 
-Measured on 2026-10-31 on an Apple M5 with 16 GB, using Qwen3.5 9B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`, over the 118 benchmark turns:
+Measured on 2026-11-01 on an Apple M5 with 16 GB, using Qwen3.5 9B Q4_K_M, llama.cpp 0.8.0 and `--ctx-size 8192`, over the 146 benchmark turns:
 
 | Measure | Value |
 | --- | --- |
-| Latency per model call | p50 1.97 s, p95 5.21 s, max 7.71 s |
-| Largest prompt and output | 1,411 and 106 tokens |
+| Latency per model call | p50 1.92 s, p95 4.08 s, max 13.76 s |
+| Largest prompt and output | 1,696 and 106 tokens |
 | Server memory | See [the routing results](../benchmarks/routing/results.md) |
 
 The slowest call seen is far below the 120-second turn cap, so the cap stays. Its job is to stop a stuck model, not to pace a normal one. When routing, the router's time counts against the same cap.
@@ -360,13 +366,13 @@ no LLM, the cheap LLM or the strong LLM. Bare answers are settled in code first,
 - **LLMs:** Qwen3.5 4B as cheap and Qwen3.5 9B as strong.
 - **What it can do:** only pick a route. It cannot approve anything, and it sees no review text.
 
-**Result:** on 55 held-out turns, 9B got 50 right and 4B got 49, each with 4 wrong values. The router got 47 with 4 wrong
-values, below either model alone, while using about 17% less compute than 9B. A perfect router would reach 53, so the room
-is real, but this router does not capture it, and its `none` route can drop a real stop. Across all 118 turns, 9B got 109 with
-6 wrong values and 4B got 102 with 13. 4B also returned 3 false stops, where 9B returned none. Two had no errand to end, and
-one ended a live errand on "Looks perfect, thanks" with a proposal showing. So we recommend running 9B alone. The cheap LLM routing itself got 45, the worst, because it
-sent most turns to the strong LLM after spending its own time. Laya is not measured: running its package was blocked by a
-permission check on this machine. Full tables are in [benchmarks/routing/results.md](../benchmarks/routing/results.md).
+**Result:** on 69 held-out turns, 9B and the router each got 61 right and 4B got 59, with wrong values at 7, 5 and 7. The router used
+about 23% less compute than 9B, but it needs three servers instead of one, and those gaps are within noise. A perfect router would
+reach 66, so the room is real, but this router does not capture it. Across all 146 turns, 9B got 130 with 12 wrong values and 4B got
+127 with 14. Neither returned a false stop; 4B found all 8 real stops and 9B found 6. The gap between the models is small, so we
+recommend 9B alone on modest evidence. The cheap LLM routing itself got 48, the worst, because it sent most turns to the strong
+LLM after spending its own time. Laya is not measured: running its package was blocked by a permission check on this machine. Full
+tables are in [benchmarks/routing/results.md](../benchmarks/routing/results.md).
 
 **A model does not decide approval.** The assignment says approval is "not something inferred from model output", and the
 measurement agrees: on 57 replies that must not approve, the LLMs wrongly approved 4 and 7, including

@@ -2,7 +2,7 @@
 
 import json
 
-from harness import CANARY_SECRET, find_plumber, intent, scenario
+from harness import CANARY_SECRET, details, find_plumber, intent, scenario
 
 from errand.core.domain import Limits, State
 from errand.core.render import provider_details
@@ -189,13 +189,12 @@ def test_message_during_in_flight_write(env):
     env.say("Find a plumber", find_plumber())
     env.say("1")
     env.say("yes")
-    calls_before = len(env.model.inputs)
-    reply = env.say("actually make it after 11")
-    assert len(env.model.inputs) == calls_before
+    # A model may read this for a stop, and it answers with the change the user asked for, which must not apply.
+    reply = env.say("actually make it after 11", details(earliest_time="11:00"))
     assert "Booked and verified" in reply
     assert "not applied" in reply and "reschedule" in reply
     assert env.run().detail("earliest_time") is None
-    env.record.notes = "Message not sent to the model; outcome verified first; user told it was not applied and offered a reschedule"
+    env.record.notes = "Only a stop could come of the message; outcome verified first; user told it was not applied and offered a reschedule"
 
 
 def test_each_run_writes_one_trace_with_the_required_fields(env):

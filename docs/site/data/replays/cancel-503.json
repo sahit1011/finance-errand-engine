@@ -2,22 +2,22 @@
  "id": "cancel-503",
  "events": [
   {
-   "at": "2026-11-01T02:08:12.430753+05:30",
-   "ns": 1793479092430754000,
+   "at": "2026-11-01T14:20:59.565588+05:30",
+   "ns": 1793523059565589000,
    "type": "user_message",
-   "message_id": 8,
+   "message_id": 7,
    "text": "Cancel my carpenter on Wednesday",
    "seq": 1
   },
   {
-   "at": "2026-11-01T02:08:12.430856+05:30",
-   "ns": 1793479092430857000,
+   "at": "2026-11-01T14:20:59.565649+05:30",
+   "ns": 1793523059565650000,
    "type": "model_call_started",
    "seq": 2
   },
   {
-   "at": "2026-11-01T02:08:14.832364+05:30",
-   "ns": 1793479094832417000,
+   "at": "2026-11-01T14:21:01.929099+05:30",
+   "ns": 1793523061929123000,
    "type": "model_call",
    "model": "llama.cpp",
    "input": {
@@ -33,29 +33,29 @@
     "read_results": []
    },
    "raw_output": "{\"actions\":[{\"type\":\"set_intent\",\"intent\":\"cancel\"},{\"type\":\"update_details\",\"details\":{\"service\":\"carpenter\"}},{\"type\":\"update_details\",\"details\":{\"when\":\"wednesday\"}}],\"done\":true}",
-   "latency_ms": 2401.43,
-   "prompt_tokens": 1191,
+   "latency_ms": 2363.41,
+   "prompt_tokens": 1476,
    "completion_tokens": 44,
-   "compute_seconds": 2.3868899999999997,
+   "compute_seconds": 2.359012,
    "seq": 3
   },
   {
-   "at": "2026-11-01T02:08:14.841372+05:30",
-   "ns": 1793479094841391000,
+   "at": "2026-11-01T14:21:01.934046+05:30",
+   "ns": 1793523061934056000,
    "type": "run_started",
    "run_id": "run-3",
    "workflow": "cancel",
    "seq": 4
   },
   {
-   "at": "2026-11-01T02:08:14.844476+05:30",
-   "ns": 1793479094844483000,
+   "at": "2026-11-01T14:21:01.936706+05:30",
+   "ns": 1793523061936713000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.38,
+   "latency_ms": 0.13,
    "result": [
     {
      "id": "booking-1",
@@ -68,8 +68,8 @@
    "seq": 5
   },
   {
-   "at": "2026-11-01T02:08:14.847338+05:30",
-   "ns": 1793479094847346000,
+   "at": "2026-11-01T14:21:01.938793+05:30",
+   "ns": 1793523061938804000,
    "type": "approval",
    "approval_id": "approval-3",
    "status": "pending",
@@ -80,8 +80,8 @@
    "seq": 6
   },
   {
-   "at": "2026-11-01T02:08:14.848792+05:30",
-   "ns": 1793479094848798000,
+   "at": "2026-11-01T14:21:01.940203+05:30",
+   "ns": 1793523061940206000,
    "type": "transition",
    "run_id": "run-3",
    "from_state": "COLLECTING",
@@ -90,27 +90,27 @@
    "seq": 7
   },
   {
-   "at": "2026-11-01T02:08:14.850813+05:30",
-   "ns": 1793479094850818000,
+   "at": "2026-11-01T14:21:01.942186+05:30",
+   "ns": 1793523061942192000,
    "type": "reply",
-   "reply_id": 10,
-   "text": "Please confirm exactly this:\n  Action:   Cancel\n  Provider: carpenter-jayanagar-3\n  Slot:     Wed 4 Nov, 08:00\n  Price:    ₹950\nReply yes to confirm, or no to decline.",
+   "reply_id": 9,
+   "text": "Please confirm exactly this:\n  Action:   Cancel\n  Provider: Carpenter Partner 3 (Jayanagar)\n  Slot:     Wed 4 Nov, 08:00\n  Price:    ₹950\nReply yes to confirm, or no to decline.",
    "state": "AWAITING_APPROVAL",
    "model_calls": 1,
    "tool_calls": 1,
    "seq": 8
   },
   {
-   "at": "2026-11-01T02:08:14.852828+05:30",
-   "ns": 1793479094852833000,
+   "at": "2026-11-01T14:21:01.943754+05:30",
+   "ns": 1793523061943771000,
    "type": "user_message",
-   "message_id": 9,
+   "message_id": 8,
    "text": "yes",
    "seq": 9
   },
   {
-   "at": "2026-11-01T02:08:14.853644+05:30",
-   "ns": 1793479094853646000,
+   "at": "2026-11-01T14:21:01.944261+05:30",
+   "ns": 1793523061944264000,
    "type": "transition",
    "run_id": "run-3",
    "from_state": "AWAITING_APPROVAL",
@@ -119,31 +119,31 @@
    "seq": 10
   },
   {
-   "at": "2026-11-01T02:08:14.855180+05:30",
-   "ns": 1793479094855182000,
+   "at": "2026-11-01T14:21:01.944861+05:30",
+   "ns": 1793523061944863000,
    "type": "approval",
    "approval_id": "approval-3",
    "status": "approved",
-   "source_message_id": 9,
+   "source_message_id": 8,
    "idempotency_key": "idem-approval-3",
    "seq": 11
   },
   {
-   "at": "2026-11-01T02:08:14.855777+05:30",
-   "ns": 1793479094855779000,
+   "at": "2026-11-01T14:21:01.945815+05:30",
+   "ns": 1793523061945819000,
    "type": "tool_call",
    "tool": "cancel",
    "args": [
     "booking-1",
     "idem-approval-3"
    ],
-   "latency_ms": 0.32,
+   "latency_ms": 0.63,
    "error": "503",
    "seq": 12
   },
   {
-   "at": "2026-11-01T02:08:14.856450+05:30",
-   "ns": 1793479094856454000,
+   "at": "2026-11-01T14:21:01.946528+05:30",
+   "ns": 1793523061946532000,
    "type": "retry",
    "attempt_id": "attempt-approval-3",
    "retries": 1,
@@ -151,23 +151,23 @@
    "seq": 13
   },
   {
-   "at": "2026-11-01T02:08:14.860290+05:30",
-   "ns": 1793479094860294000,
+   "at": "2026-11-01T14:21:01.948407+05:30",
+   "ns": 1793523061948409000,
    "type": "tool_call",
    "tool": "cancel",
    "args": [
     "booking-1",
     "idem-approval-3"
    ],
-   "latency_ms": 3.6,
+   "latency_ms": 1.62,
    "result": {
     "status": "cancelled"
    },
    "seq": 14
   },
   {
-   "at": "2026-11-01T02:08:14.861346+05:30",
-   "ns": 1793479094861349000,
+   "at": "2026-11-01T14:21:01.949150+05:30",
+   "ns": 1793523061949154000,
    "type": "transition",
    "run_id": "run-3",
    "from_state": "EXECUTING",
@@ -176,8 +176,8 @@
    "seq": 15
   },
   {
-   "at": "2026-11-01T02:08:14.861688+05:30",
-   "ns": 1793479094861690000,
+   "at": "2026-11-01T14:21:01.949553+05:30",
+   "ns": 1793523061949555000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
@@ -196,16 +196,16 @@
    "seq": 16
   },
   {
-   "at": "2026-11-01T02:08:14.862285+05:30",
-   "ns": 1793479094862287000,
+   "at": "2026-11-01T14:21:01.950330+05:30",
+   "ns": 1793523061950332000,
    "type": "approval",
    "approval_id": "approval-3",
    "status": "consumed",
    "seq": 17
   },
   {
-   "at": "2026-11-01T02:08:14.862526+05:30",
-   "ns": 1793479094862528000,
+   "at": "2026-11-01T14:21:01.950587+05:30",
+   "ns": 1793523061950588000,
    "type": "transition",
    "run_id": "run-3",
    "from_state": "VERIFYING",
@@ -214,18 +214,18 @@
    "seq": 18
   },
   {
-   "at": "2026-11-01T02:08:14.863104+05:30",
-   "ns": 1793479094863106000,
+   "at": "2026-11-01T14:21:01.951895+05:30",
+   "ns": 1793523061951897000,
    "type": "verified",
    "booking_id": "booking-1",
    "seq": 19
   },
   {
-   "at": "2026-11-01T02:08:14.863995+05:30",
-   "ns": 1793479094863997000,
+   "at": "2026-11-01T14:21:01.952705+05:30",
+   "ns": 1793523061952707000,
    "type": "reply",
-   "reply_id": 12,
-   "text": "Cancelled and verified: carpenter-jayanagar-3, Wed 4 Nov, 08:00.",
+   "reply_id": 11,
+   "text": "Cancelled and verified: Carpenter Partner 3 (Jayanagar), Wed 4 Nov, 08:00.",
    "state": "DONE",
    "model_calls": 0,
    "tool_calls": 2,

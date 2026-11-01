@@ -5,8 +5,8 @@ import time
 from errand.contract import AREAS, SERVICES, ToolError
 from errand.core import render
 from errand.core.approval import approve, move, propose, reopen, void, void_pending
-from errand.core.domain import InvalidModelOutput, Run, State
-from errand.core.intake import Kind, classify
+from errand.core.domain import CapReached, InvalidModelOutput, ModelUnavailable, Run, State
+from errand.core.intake import Intake, Kind, classify
 from errand.core.memory import InvalidMemoryValue, check_proposal
 from errand.core.turn import Turn
 from errand.core.when import normalise_time, resolve_when
@@ -18,6 +18,8 @@ MAX_SLOTS_PER_PROVIDER = 2
 # After this many unusable model outputs in one turn, ask the user instead of trying again.
 MAX_INVALID_MODEL_OUTPUTS = 2
 NO_LIMIT = "no_limit"
+# A detail taken from the booking being moved or cancelled, rather than from the user.
+BOOKING_SOURCE = "booking"
 SAME_AS_LAST = "same_as_last"
 REQUIRED_DETAILS = {"book": ("service", "area", "when", "budget"), "reschedule": ("area", "when"), "cancel": ()}
 
@@ -55,8 +57,7 @@ class Workflow:
         elif intake.kind == Kind.NUMBER and run is not None and (run.options or run.booking_choices):
             self._select(turn, run, intake.number)
             self.advance(turn)
-        else:
-            self._interpret(turn)
+        elif not self._interpret(turn):
             self.advance(turn)
 
     def start_up(self, turn: Turn) -> None:
@@ -198,19 +199,26 @@ class Workflow:
         turn.say("Stopped. I have not booked or changed anything for this errand.")
 
     def _memory_command(self, turn: Turn, intake) -> None:
-        run = turn.run
         if intake.kind == Kind.MEMORY_VIEW:
-            turn.say(render.memory_view(self.memory.view(turn.user_id)))
+            self._show_memory(turn)
         elif intake.kind == Kind.MEMORY_FORGET:
-            self.memory.forget(turn, run, intake.key)
-            turn.say(f"Forgotten: your {intake.key.replace('_', ' ')}. I will not use it again unless you tell me.")
+            self._forget_memory(turn, intake.key)
         else:
             try:
-                value = self.memory.state(turn, run, intake.key, intake.value, evidence="user message")
+                self._correct_memory(turn, intake.key, intake.value)
             except InvalidMemoryValue as error:
                 turn.say(f"I could not save that: {error}.")
-                return
-            turn.say(f"Saved: your {intake.key.replace('_', ' ')} is {value}.")
+
+    def _show_memory(self, turn: Turn) -> None:
+        turn.say(render.memory_view(self.memory.view(turn.user_id)))
+
+    def _forget_memory(self, turn: Turn, key: str) -> None:
+        self.memory.forget(turn, turn.run, key)
+        turn.say(f"Forgotten: your {key.replace('_', ' ')}. I will not use it again unless you tell me.")
+
+    def _correct_memory(self, turn: Turn, key: str, value: str) -> None:
+        saved = self.memory.state(turn, turn.run, key, value, evidence="user message")
+        turn.say(f"Saved: your {key.replace('_', ' ')} is {saved}.")
 
     def _drop_passed_slots(self, turn: Turn, run: Run) -> bool:
         """Options and proposals go stale while the user is away, and nothing later checks that a slot is still ahead."""
@@ -226,7 +234,7 @@ class Workflow:
             return False
         turn.say("Some of those times have passed, so I have not acted on that. Let me check what is open now.")
         if run.workflow == "cancel":
-            run.target_booking = None
+            self._forget_target(run)
         reopen(self.store, turn.tracer, run, "a slot has passed")
         return True
 
@@ -235,41 +243,60 @@ class Workflow:
 
     def _handle_in_flight(self, turn: Turn, intake) -> None:
         run = turn.run
-        if intake.kind == Kind.STOP:
+        stopping = intake.kind == Kind.STOP or (intake.kind == Kind.OTHER and self._reads_as_stop(turn))
+        if stopping:
             run.stop_requested = True
             self.store.save_run(run)
         if run.state in (State.EXECUTING, State.UNKNOWN_NEEDS_CHECK):
             move(self.store, turn.tracer, run, State.VERIFYING, "checking the outcome before anything else")
         self.advance(turn)
-        if intake.kind in (Kind.OTHER, Kind.NO, Kind.NUMBER):
+        if not stopping and intake.kind in (Kind.OTHER, Kind.NO, Kind.NUMBER):
             turn.say("Your last message was not applied, because I had to settle this booking first. Please send it again, or ask me to reschedule if it was booked.")
+
+    def _reads_as_stop(self, turn: Turn) -> bool:
+        """A write in flight must still be checked, so a model that fails or says anything else changes nothing here.
+
+        Only a stop is taken from its output, because a stop can prevent a retry and can never cause a write.
+        """
+        try:
+            output = parse_output(self._ask_model(turn, []).raw)
+        except (ModelUnavailable, InvalidModelOutput, CapReached) as error:
+            turn.tracer.event("model_skipped", detail=str(error))
+            return False
+        return [action["type"] for action in output.actions] == ["stop"]
 
     # Model interpretation.
 
-    def _interpret(self, turn: Turn) -> None:
+    def _ask_model(self, turn: Turn, read_results: list[dict]):
+        turn.budget.charge_model()
+        started = time.perf_counter()
+        model_input = self._model_input(turn, read_results)
+        turn.tracer.event("model_call_started")
+        reply = self.model.decide(model_input, turn.budget.remaining_seconds())
+        turn.tracer.event(
+            "model_call",
+            model=reply.served_by,
+            input=model_input.to_dict(),
+            raw_output=reply.raw,
+            latency_ms=round((time.perf_counter() - started) * 1000, 2),
+            prompt_tokens=reply.prompt_tokens,
+            completion_tokens=reply.completion_tokens,
+            compute_seconds=reply.compute_seconds,
+        )
+        return reply
+
+    def _interpret(self, turn: Turn) -> bool:
+        """Returns True if a worded answer already moved the run on and showed what comes next."""
         invalid = 0
         read_results: list[dict] = []
         while True:
-            turn.budget.charge_model()
-            started = time.perf_counter()
-            model_input = self._model_input(turn, read_results)
-            turn.tracer.event("model_call_started")
-            reply = self.model.decide(model_input, turn.budget.remaining_seconds())
-            turn.tracer.event(
-                "model_call",
-                model=reply.served_by,
-                input=model_input.to_dict(),
-                raw_output=reply.raw,
-                latency_ms=round((time.perf_counter() - started) * 1000, 2),
-                prompt_tokens=reply.prompt_tokens,
-                completion_tokens=reply.completion_tokens,
-                compute_seconds=reply.compute_seconds,
-            )
+            reply = self._ask_model(turn, read_results)
             try:
                 output = parse_output(reply.raw)
                 self._check_actions(turn, output.actions)
                 if self._refuses_another_errand(turn, output.actions):
-                    return
+                    return False
+                answered = turn.run is not None and turn.run.pending_question is not None and any(a["type"] == "answer_question" for a in output.actions)
                 # An output is applied whole, and a details action needs the run its intent creates.
                 for action in sorted(output.actions, key=lambda a: a["type"] != "set_intent"):
                     self._apply_action(turn, action, read_results)
@@ -278,13 +305,13 @@ class Workflow:
                 turn.tracer.event("model_output_rejected", detail=str(error))
                 if invalid >= MAX_INVALID_MODEL_OUTPUTS:
                     turn.say("Sorry, I did not understand that. Could you say it another way?")
-                    return
+                    return False
                 continue
-            # A stop ends the turn even if a model asks to continue, because nothing is left to continue.
-            if output.done or any(action["type"] == "stop" for action in output.actions):
+            # A stop or an answer ends the turn even if a model asks to continue, because the engine has taken over.
+            if output.done or any(action["type"] in ("stop", "answer_question") for action in output.actions):
                 if turn.run is None and not turn.lines:
                     turn.say(render.WHAT_I_DO)
-                return
+                return answered
 
     def _model_input(self, turn: Turn, read_results: list[dict]) -> ModelInput:
         run = turn.run
@@ -320,7 +347,7 @@ class Workflow:
                 self._check_selection(run, action["option"])
             elif kind == "request_read" and action["tool"] == "get_provider":
                 self._option(run, action.get("option"))
-            elif kind == "propose_memory":
+            elif kind in ("propose_memory", "correct_memory"):
                 check_proposal(action["key"], action["value"], turn.text)
 
     def _check_selection(self, run: Run | None, number: int) -> None:
@@ -363,6 +390,27 @@ class Workflow:
             turn.say("Could you tell me a little more?")
         elif kind == "stop":
             self._stop(turn)
+        elif kind == "show_memory":
+            self._show_memory(turn)
+        elif kind == "forget_memory":
+            self._forget_memory(turn, action["key"])
+        elif kind == "correct_memory":
+            self._correct_memory(turn, action["key"], action["value"])
+        elif kind == "answer_question":
+            self._answer_from_model(turn, action["answer"])
+
+    def _answer_from_model(self, turn: Turn, answer: str) -> None:
+        """A model may answer anything that moves no money. A yes to a proposal only earns a request for a bare yes."""
+        run = turn.run
+        question = run.pending_question if run is not None else None
+        if question is None:
+            return
+        if answer == "yes" and question["kind"] == "approval":
+            turn.tracer.event("model_read_a_yes", approval_id=question["approval_id"])
+            turn.say(render.TYPE_YES)
+            self.advance(turn)
+            return
+        self._answer(turn, Intake(Kind.YES if answer == "yes" else Kind.NO), None)
 
     def _set_intent(self, turn: Turn, intent: str) -> None:
         if turn.run is not None:
@@ -392,8 +440,7 @@ class Workflow:
         if "service" in changed:
             self._forget_what_depended_on_the_service(run)
         if run.workflow == "cancel" and "when" in changed:
-            run.target_booking = None
-            run.booking_choices = []
+            self._forget_target(run)
         if run.state in (State.PRESENTING, State.AWAITING_APPROVAL, State.HOLDING):
             reopen(self.store, turn.tracer, run, "correction")
         self.store.save_run(run)
@@ -406,8 +453,15 @@ class Workflow:
         if run.detail("provider") == SAME_AS_LAST:
             run.details.pop("provider_id", None)
         if run.workflow in ("reschedule", "cancel"):
-            run.target_booking = None
-            run.booking_choices = []
+            Workflow._forget_target(run)
+
+    @staticmethod
+    def _forget_target(run: Run) -> None:
+        run.target_booking = None
+        run.booking_choices = []
+        area = run.details.get("area")
+        if area is not None and area["source"] == BOOKING_SOURCE:
+            del run.details["area"]
 
     def _clean_detail(self, key: str, value):
         try:
@@ -486,6 +540,7 @@ class Workflow:
         if run.workflow in ("reschedule", "cancel") and run.target_booking is None:
             if not self._find_target(turn, run):
                 return run.state != State.COLLECTING
+        self._reuse_booking_area(run)
         # Before memory, because asking for the same one as last time overrides a saved technician.
         if run.detail("provider") == SAME_AS_LAST and run.detail("provider_id") is None and run.detail("service") is not None:
             self._resolve_same_as_last(turn, run)
@@ -493,6 +548,9 @@ class Workflow:
             return False
         missing = self._missing(run)
         if missing:
+            if run.workflow == "reschedule" and "when" in missing and run.target_booking is not None:
+                target = run.target_booking
+                turn.say(render.what_a_move_can_do(target["service"], self._provider_name(target), target["slot"]))
             turn.say(render.ask_missing(missing))
             return False
         if run.workflow == "cancel":
@@ -501,6 +559,21 @@ class Workflow:
             return False
         move(self.store, turn.tracer, run, State.SEARCHING, "details known")
         return True
+
+    def _reuse_booking_area(self, run: Run) -> None:
+        if run.target_booking is None or run.detail("area") is not None:
+            return
+        # A person who asked to forget their area was told it would not be used again, so this asks rather than reuses it.
+        saved = self.store.memory_fact(run.user_id, "area")
+        if saved is not None and saved["status"] == "forgotten":
+            return
+        place = self.store.booking_place(run.target_booking["id"])
+        if place is not None:
+            run.details["area"] = {"value": place["area"], "source": BOOKING_SOURCE}
+
+    def _provider_name(self, target: dict) -> str:
+        place = self.store.booking_place(target["id"])
+        return place["provider_name"] if place is not None else target["provider"]
 
     def _step_searching(self, turn: Turn, run: Run) -> None:
         missing = self._missing(run)
@@ -660,7 +733,7 @@ class Workflow:
                 candidates.append((provider["price"], -provider["rating"], slot, provider))
         candidates.sort(key=lambda c: (c[0], c[1], c[2]))
         return [
-            {"n": index, "provider_id": provider["id"], "name": provider["name"], "slot": slot, "price": price, "rating": provider["rating"]}
+            {"n": index, "provider_id": provider["id"], "name": provider["name"], "slot": slot, "price": price, "rating": provider["rating"], "area": run.detail("area")}
             for index, (price, _, slot, provider) in enumerate(candidates[:MAX_OPTIONS], start=1)
         ]
 
@@ -712,7 +785,7 @@ class Workflow:
         target = run.target_booking
         price = self.store.booking_price(target["id"])
         label = ""
-        name = target["provider"]
+        name = self._provider_name(target)
         if price is None:
             if run.detail("area") is None:
                 turn.say(render.ask_missing(["area"]))

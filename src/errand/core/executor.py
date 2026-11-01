@@ -180,6 +180,9 @@ class Executor:
         with self.store.tx():
             consume(self.store, turn.tracer, run, approval.id)
             self.store.save_booking_price(booking_id, approval.price)
+            # Where it was searched, because a saved area can change while the outcome is unknown. A proposal saved before
+            # options carried an area has none, and a later move then simply asks.
+            self.store.save_booking_place(booking_id, run.selected.get("area"), approval.provider_name)
             run.result = {"summary": text, "booking_id": booking_id}
             run.forgotten_in_flight = False
             move(self.store, turn.tracer, run, State.DONE, "verified booked")

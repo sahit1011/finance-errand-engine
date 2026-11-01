@@ -36,6 +36,31 @@ def test_common_hindi_stops_are_settled_in_code(text):
     assert classify(text).kind == Kind.STOP
 
 
+@pytest.mark.parametrize("text", ["proceed", "please proceed", "yes proceed", "yes go ahead", "yes do it", "confirm it", "yes book it", "Yes, proceed."])
+def test_more_plain_confirmations_are_yes(text):
+    assert classify(text).kind == Kind.YES
+
+
+@pytest.mark.parametrize("text", ["yes book it", "yes, book it"])
+def test_more_confirmations_naming_booking_say_so(text):
+    assert classify(text).names_action == "book"
+
+
+@pytest.mark.parametrize("text", ["yes proceed but cheaper", "proceed with the other one", "proceed?", "yes ?", "go ahead ?", "stop ?"])
+def test_anything_more_or_a_question_is_still_not_settled_in_code(text):
+    assert classify(text).kind == Kind.OTHER
+
+
+@pytest.mark.parametrize("text", ["what do you remember ?", "what do you remember  ?", "show memory ?", "What do you know about me ?"])
+def test_a_space_before_the_question_mark_still_finds_the_memory_command(text):
+    assert classify(text).kind == Kind.MEMORY_VIEW
+
+
+def test_a_space_before_the_question_mark_still_finds_a_forget():
+    intake = classify("forget my area ?")
+    assert (intake.kind, intake.key) == (Kind.MEMORY_FORGET, "area")
+
+
 @pytest.mark.parametrize("text", ["yes?", "ok?", "book it?", "Go ahead?", "confirm?"])
 def test_a_question_is_not_a_confirmation(text):
     assert classify(text).kind == Kind.OTHER

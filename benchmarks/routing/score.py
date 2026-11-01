@@ -28,7 +28,7 @@ def _repeats(key: str, value, known: dict) -> bool:
 def canonical(actions: list[dict], context: dict, today: date) -> dict:
     """Reduces actions to what they mean. A clarification asks the user again, the same as no action."""
     workflow, known = context.get("workflow"), context.get("details", {})
-    found = {"intent": None, "details": {}, "select": None, "read": None, "memory": None, "stop": None}
+    found = {"intent": None, "details": {}, "select": None, "read": None, "memory": None, "stop": None, "show_memory": None, "forget": None, "correct": None, "answer": None}
     for action in actions:
         kind = action["type"]
         if kind == "set_intent" and action["intent"] != workflow:
@@ -43,6 +43,14 @@ def canonical(actions: list[dict], context: dict, today: date) -> dict:
             found["memory"] = (action["key"], _memory_value(action["key"], action["value"]))
         elif kind == "stop":
             found["stop"] = True
+        elif kind == "show_memory":
+            found["show_memory"] = True
+        elif kind == "forget_memory":
+            found["forget"] = action["key"]
+        elif kind == "correct_memory":
+            found["correct"] = (action["key"], _memory_value(action["key"], action["value"]))
+        elif kind == "answer_question":
+            found["answer"] = action["answer"]
     return found
 
 
@@ -54,6 +62,10 @@ def _expected(label: dict, today: date) -> dict:
         "read": label.get("read"),
         "memory": label.get("memory"),
         "stop": label.get("stop"),
+        "show_memory": label.get("show_memory"),
+        "forget": label.get("forget"),
+        "correct": label.get("correct"),
+        "answer": label.get("answer"),
     }
 
 
@@ -69,7 +81,7 @@ def score(raw: str, turn: dict, today: date) -> dict:
     except (InvalidModelOutput, InvalidMemoryValue, ValueError) as error:
         return {"correct": False, "wrong_value": False, "rejected": str(error), "got": None}
     wrong_details = {key: value for key, value in got["details"].items() if key not in wanted["details"] or wanted["details"][key] != value}
-    wrong_other = [field for field in ("intent", "select", "memory", "stop") if got[field] is not None and got[field] != wanted[field]]
+    wrong_other = [field for field in ("intent", "select", "memory", "stop", "show_memory", "forget", "correct", "answer") if got[field] is not None and got[field] != wanted[field]]
     return {
         "correct": got == wanted,
         "wrong_value": bool(wrong_details or wrong_other),

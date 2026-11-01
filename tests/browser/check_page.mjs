@@ -119,6 +119,35 @@ await sleep(300); await ready();
 await say("Find a plumber for my kitchen tap next week, mornings only, under ₹1,500.");
 await say("Indiranagar"); await say("1"); await say("yes");
 
+// The model understands what people mean, in any words, except for approval.
+await js(`document.getElementById("preset").value="normal"; document.getElementById("new-session").click();`);
+await sleep(300); await ready();
+await say("remember my area is indiranagar");
+answer = await say("what do u remember ?");
+report(answer.includes("indiranagar (stated)"), "memory in other words is shown", answer.slice(0, 60));
+await say("Find a plumber next week, no budget limit");
+await say("1");
+answer = await say("haan bilkul, kar dijiye please");
+report(answer.includes("type yes") && answer.includes("Please confirm"), "a worded yes asks for a typed one", answer.slice(0, 70));
+report(await js(`![...document.querySelectorAll("#live-workflow .step")].some(s=>/(^|\\s)book\\b/.test(s.textContent))`), "a worded yes makes no book call");
+answer = await say("yes, but make it after 14:00");
+report(answer.includes("Here are the options") && !answer.includes("did not understand"), "yes-but is a correction", answer.slice(0, 60));
+await say("1");
+answer = await say("yes proceed");
+report(answer.includes("verified"), "yes proceed approves", answer.slice(0, 60));
+answer = await say("can we change my scheduled plumber");
+// The 14:00 limit above became an inferred preference, which must be asked about before it is used.
+report(answer.includes("might be 14:00"), "an inferred preference is asked about first");
+answer = await say("no");
+report(answer.includes("keeps this provider") && !answer.includes("which area"), "a move says what it can do and does not re-ask the area", answer.slice(0, 90));
+answer = await say("next week");
+report(answer.includes("Here are the options"), "saying the time shows options");
+await say("stop");
+await js(`document.getElementById("preset").value="timeout_after_success"; document.getElementById("new-session").click();`);
+await sleep(300); await ready();
+await say("Find a plumber for my kitchen tap next week, mornings only, under ₹1,500.");
+await say("Indiranagar"); await say("1"); await say("yes");
+
 // Hostile text typed into chat must stay plain text.
 await say(`<img src=x onerror="window.__hacked=1"><script>window.__hacked=2</script>`);
 await sleep(300);
@@ -135,7 +164,9 @@ report(true, "steps survive a reload", String(await js(`document.querySelectorAl
 
 // Results and Replay, in light and dark.
 await go(APP + "#results"); await until(`document.querySelector(".results")!==null`, "results");
-report(await js(`document.querySelectorAll(".cell").length===44`), "44 scenario cells", String(await js(`document.querySelectorAll(".cell").length`)));
+const cells = await js(`document.querySelectorAll(".cell").length`);
+const scenarios = (await (await fetch(APP + "data/results.json")).json()).evals.length;
+report(cells === scenarios && cells >= 15, "one cell for each eval scenario", String(cells));
 report(await js(`document.documentElement.scrollWidth<=window.innerWidth`), "results page has no sideways scroll");
 await shot("4-results-top");
 await js(`window.scrollTo(0, 620)`); await shot("5-results-mid");

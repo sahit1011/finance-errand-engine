@@ -2,22 +2,22 @@
  "id": "stop-in-hindi",
  "events": [
   {
-   "at": "2026-11-01T02:08:14.959294+05:30",
-   "ns": 1793479094959297000,
+   "at": "2026-11-01T14:21:02.046467+05:30",
+   "ns": 1793523062046469000,
    "type": "user_message",
    "message_id": 1,
    "text": "Find a cleaner in Whitefield next week, no limit",
    "seq": 1
   },
   {
-   "at": "2026-11-01T02:08:14.959398+05:30",
-   "ns": 1793479094959399000,
+   "at": "2026-11-01T14:21:02.046666+05:30",
+   "ns": 1793523062046667000,
    "type": "model_call_started",
    "seq": 2
   },
   {
-   "at": "2026-11-01T02:08:18.523853+05:30",
-   "ns": 1793479098523863000,
+   "at": "2026-11-01T14:21:05.639653+05:30",
+   "ns": 1793523065639682000,
    "type": "model_call",
    "model": "llama.cpp",
    "input": {
@@ -33,35 +33,35 @@
     "read_results": []
    },
    "raw_output": "{\"actions\":[{\"type\":\"set_intent\",\"intent\":\"book\"},{\"type\":\"update_details\",\"details\":{\"service\":\"cleaner\"}},{\"type\":\"update_details\",\"details\":{\"area\":\"whitefield\"}},{\"type\":\"update_details\",\"details\":{\"when\":\"next_week\"}},{\"type\":\"update_details\",\"details\":{\"budget\":\"no_limit\"}}],\"done\":true}",
-   "latency_ms": 3564.44,
-   "prompt_tokens": 1196,
+   "latency_ms": 3592.74,
+   "prompt_tokens": 1481,
    "completion_tokens": 69,
-   "compute_seconds": 3.560779,
+   "compute_seconds": 3.575069,
    "seq": 3
   },
   {
-   "at": "2026-11-01T02:08:18.528428+05:30",
-   "ns": 1793479098528437000,
+   "at": "2026-11-01T14:21:05.651170+05:30",
+   "ns": 1793523065651190000,
    "type": "run_started",
    "run_id": "run-1",
    "workflow": "book",
    "seq": 4
   },
   {
-   "at": "2026-11-01T02:08:18.532492+05:30",
-   "ns": 1793479098532498000,
+   "at": "2026-11-01T14:21:05.657024+05:30",
+   "ns": 1793523065657029000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.06,
+   "latency_ms": 0.08,
    "result": [],
    "seq": 5
   },
   {
-   "at": "2026-11-01T02:08:18.533583+05:30",
-   "ns": 1793479098533590000,
+   "at": "2026-11-01T14:21:05.658225+05:30",
+   "ns": 1793523065658234000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "COLLECTING",
@@ -70,8 +70,8 @@
    "seq": 6
   },
   {
-   "at": "2026-11-01T02:08:18.536454+05:30",
-   "ns": 1793479098536458000,
+   "at": "2026-11-01T14:21:05.660031+05:30",
+   "ns": 1793523065660033000,
    "type": "tool_call",
    "tool": "search_providers",
    "args": [
@@ -82,7 +82,7 @@
      "2026-11-08"
     ]
    ],
-   "latency_ms": 1.83,
+   "latency_ms": 1.27,
    "result": [
     {
      "id": "cleaner-whitefield-1",
@@ -381,20 +381,20 @@
    "seq": 7
   },
   {
-   "at": "2026-11-01T02:08:18.552676+05:30",
-   "ns": 1793479098552679000,
+   "at": "2026-11-01T14:21:05.675721+05:30",
+   "ns": 1793523065675723000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.06,
+   "latency_ms": 0.02,
    "result": [],
    "seq": 8
   },
   {
-   "at": "2026-11-01T02:08:18.553473+05:30",
-   "ns": 1793479098553476000,
+   "at": "2026-11-01T14:21:05.676427+05:30",
+   "ns": 1793523065676435000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "SEARCHING",
@@ -403,8 +403,8 @@
    "seq": 9
   },
   {
-   "at": "2026-11-01T02:08:18.554857+05:30",
-   "ns": 1793479098554862000,
+   "at": "2026-11-01T14:21:05.677628+05:30",
+   "ns": 1793523065677633000,
    "type": "reply",
    "reply_id": 1,
    "text": "Here are the options that fit:\n  1. Cleaner Partner 4 (Whitefield): Mon 2 Nov, 09:00, ₹650, rated 4.2\n  2. Cleaner Partner 4 (Whitefield): Mon 2 Nov, 11:00, ₹650, rated 4.2\n  3. Cleaner Partner 5 (Whitefield): Mon 2 Nov, 11:00, ₹1,050, rated 4.5\n  4. Cleaner Partner 5 (Whitefield): Mon 2 Nov, 12:00, ₹1,050, rated 4.5\n  5. Cleaner Partner 1 (Whitefield): Mon 2 Nov, 11:00, ₹1,050, rated 3.4\nWhich one would you like? Reply with its number.",
@@ -414,16 +414,16 @@
    "seq": 10
   },
   {
-   "at": "2026-11-01T02:08:18.555752+05:30",
-   "ns": 1793479098555754000,
+   "at": "2026-11-01T14:21:05.678660+05:30",
+   "ns": 1793523065678662000,
    "type": "user_message",
    "message_id": 2,
    "text": "1",
    "seq": 11
   },
   {
-   "at": "2026-11-01T02:08:18.556325+05:30",
-   "ns": 1793479098556331000,
+   "at": "2026-11-01T14:21:05.679237+05:30",
+   "ns": 1793523065679241000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "PRESENTING",
@@ -432,25 +432,25 @@
    "seq": 12
   },
   {
-   "at": "2026-11-01T02:08:18.558231+05:30",
-   "ns": 1793479098558232000,
+   "at": "2026-11-01T14:21:05.680966+05:30",
+   "ns": 1793523065680967000,
    "type": "tool_call",
    "tool": "hold_slot",
    "args": [
     "cleaner-whitefield-4",
     "2026-11-02T09:00"
    ],
-   "latency_ms": 1.49,
+   "latency_ms": 1.36,
    "result": {
     "hold_id": "hold-1",
-    "expires_at": "2026-11-01T02:18:18.557510+05:30",
+    "expires_at": "2026-11-01T14:31:05.680344+05:30",
     "quoted_price": 650
    },
    "seq": 13
   },
   {
-   "at": "2026-11-01T02:08:18.559616+05:30",
-   "ns": 1793479098559622000,
+   "at": "2026-11-01T14:21:05.682302+05:30",
+   "ns": 1793523065682304000,
    "type": "approval",
    "approval_id": "approval-1",
    "status": "pending",
@@ -461,8 +461,8 @@
    "seq": 14
   },
   {
-   "at": "2026-11-01T02:08:18.560323+05:30",
-   "ns": 1793479098560326000,
+   "at": "2026-11-01T14:21:05.683182+05:30",
+   "ns": 1793523065683184000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "HOLDING",
@@ -471,8 +471,8 @@
    "seq": 15
   },
   {
-   "at": "2026-11-01T02:08:18.561616+05:30",
-   "ns": 1793479098561620000,
+   "at": "2026-11-01T14:21:05.684471+05:30",
+   "ns": 1793523065684475000,
    "type": "reply",
    "reply_id": 2,
    "text": "Please confirm exactly this:\n  Action:   Book\n  Provider: Cleaner Partner 4 (Whitefield)\n  Slot:     Mon 2 Nov, 09:00\n  Price:    ₹650\nReply yes to confirm, or no to decline.",
@@ -482,22 +482,22 @@
    "seq": 16
   },
   {
-   "at": "2026-11-01T02:08:18.562342+05:30",
-   "ns": 1793479098562344000,
+   "at": "2026-11-01T14:21:05.685337+05:30",
+   "ns": 1793523065685364000,
    "type": "user_message",
    "message_id": 3,
    "text": "मुझे अब यह नहीं करना, सब छोड़ दीजिए",
    "seq": 17
   },
   {
-   "at": "2026-11-01T02:08:18.562542+05:30",
-   "ns": 1793479098562543000,
+   "at": "2026-11-01T14:21:05.685561+05:30",
+   "ns": 1793523065685562000,
    "type": "model_call_started",
    "seq": 18
   },
   {
-   "at": "2026-11-01T02:08:19.967385+05:30",
-   "ns": 1793479099967409000,
+   "at": "2026-11-01T14:21:07.076044+05:30",
+   "ns": 1793523067076049000,
    "type": "model_call",
    "model": "llama.cpp",
    "input": {
@@ -549,15 +549,15 @@
     "read_results": []
    },
    "raw_output": "{\"actions\":[{\"type\":\"stop\"}],\"done\":true}",
-   "latency_ms": 1404.83,
-   "prompt_tokens": 1404,
+   "latency_ms": 1390.49,
+   "prompt_tokens": 1689,
    "completion_tokens": 13,
-   "compute_seconds": 1.380367,
+   "compute_seconds": 1.36074,
    "seq": 19
   },
   {
-   "at": "2026-11-01T02:08:19.971113+05:30",
-   "ns": 1793479099971130000,
+   "at": "2026-11-01T14:21:07.077048+05:30",
+   "ns": 1793523067077050000,
    "type": "approval",
    "approval_id": "approval-1",
    "status": "voided",
@@ -565,8 +565,8 @@
    "seq": 20
   },
   {
-   "at": "2026-11-01T02:08:19.971847+05:30",
-   "ns": 1793479099971850000,
+   "at": "2026-11-01T14:21:07.077304+05:30",
+   "ns": 1793523067077305000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "AWAITING_APPROVAL",
@@ -575,8 +575,8 @@
    "seq": 21
   },
   {
-   "at": "2026-11-01T02:08:19.973993+05:30",
-   "ns": 1793479099974000000,
+   "at": "2026-11-01T14:21:07.078263+05:30",
+   "ns": 1793523067078265000,
    "type": "reply",
    "reply_id": 3,
    "text": "Stopped. I have not booked or changed anything for this errand.",

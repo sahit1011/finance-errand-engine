@@ -1,10 +1,11 @@
 """Scripted model for evals and offline demos. Its raw outputs go through the same parser as a live model's."""
 
+from errand.core.domain import ModelUnavailable
 from errand.interpret.model import ModelInput, ModelReply
 
 
-class ScriptExhausted(Exception):
-    pass
+class ScriptExhausted(ModelUnavailable):
+    """To the engine, a script with nothing left looks like a model that gives no answer."""
 
 
 class ScriptedModel:

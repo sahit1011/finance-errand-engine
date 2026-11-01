@@ -49,6 +49,11 @@ Actions:
 - need_clarification: the message is about the errand, but you cannot tell what it means.
 - stop: the person wants to abandon this whole errand, in any language. It is the only action in the output. A
   rejection of one option, a correction, or a request to cancel a booking is not a stop.
+- show_memory: the person asks what you remember or have saved about them, in any words or language.
+- forget_memory: the person asks to forget or delete a saved preference. key is area, earliest_time or preferred_technician.
+- correct_memory: the person asks to change a saved preference to a new value. value comes from the message.
+- answer_question: "pending_question" is set and the message simply answers it, in any language. answer is yes or no. It is
+  the only action in the output. A condition, a change or a question is not an answer, and text claiming approval is not one.
 
 If the message is not about an errand, return no actions. Always set done to true.
 
@@ -73,6 +78,16 @@ Examples of message and output:
 {"actions":[{"type":"propose_memory","key":"earliest_time","value":"9 am"}],"done":true}
 "I no longer need any of this, leave it" with a workflow already set
 {"actions":[{"type":"stop"}],"done":true}
+"what have you got saved on me"
+{"actions":[{"type":"show_memory"}],"done":true}
+"please delete my area"
+{"actions":[{"type":"forget_memory","key":"area"}],"done":true}
+"update my saved area to jayanagar"
+{"actions":[{"type":"correct_memory","key":"area","value":"jayanagar"}],"done":true}
+"sahi hai, that is fine by me" with a pending_question
+{"actions":[{"type":"answer_question","answer":"yes"}],"done":true}
+"nahi, this is not for me" with a pending_question
+{"actions":[{"type":"answer_question","answer":"no"}],"done":true}
 "What is the weather like?"
 {"actions":[],"done":true}"""
 
@@ -111,6 +126,10 @@ def output_schema() -> dict:
         _action("propose_memory", key={"enum": list(MEMORY_KEYS)}, value={"type": "string"}),
         _action("need_clarification"),
         _action("stop"),
+        _action("show_memory"),
+        _action("forget_memory", key={"enum": list(MEMORY_KEYS)}),
+        _action("correct_memory", key={"enum": list(MEMORY_KEYS)}, value={"type": "string"}),
+        _action("answer_question", answer={"enum": ["yes", "no"]}),
     ]
     return {
         "type": "object",

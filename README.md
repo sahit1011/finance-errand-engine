@@ -82,7 +82,7 @@ The outcomes are `success`, `slot_taken`, `timeout_booked` and `timeout_not_book
 
 ## Model routing
 
-Routing sends each message to no LLM, a cheap LLM or a strong one. We measured it and recommend the single 9B server above: the router scored below either model alone on held-out turns, and 9B made the fewest silent mistakes and returned no false stops, where 4B returned 3. See [the results](benchmarks/routing/results.md). To try it, also download [Qwen3.5 4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF) and [EmbeddingGemma 2](https://huggingface.co/ggml-org/embeddinggemma-2-GGUF), run a server for each on ports 8080 (4B), 8081 (9B) and 8082 (EmbeddingGemma, with `--embeddings`), then:
+Routing sends each message to no LLM, a cheap LLM or a strong one. We measured it and recommend the single 9B server above: on held-out turns the router tied 9B alone with less compute, but it needs three model servers instead of one, and the gaps are within noise. See [the results](benchmarks/routing/results.md). To try it, also download [Qwen3.5 4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF) and [EmbeddingGemma 2](https://huggingface.co/ggml-org/embeddinggemma-2-GGUF), run a server for each on ports 8080 (4B), 8081 (9B) and 8082 (EmbeddingGemma, with `--embeddings`), then:
 
 ```sh
 uv run errand chat --model-url http://127.0.0.1:8080 --strong-model-url http://127.0.0.1:8081 --router-url http://127.0.0.1:8082

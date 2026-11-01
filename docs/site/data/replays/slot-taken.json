@@ -2,22 +2,22 @@
  "id": "slot-taken",
  "events": [
   {
-   "at": "2026-11-01T02:08:00.875880+05:30",
-   "ns": 1793479080875882000,
+   "at": "2026-11-01T14:20:49.438216+05:30",
+   "ns": 1793523049438218000,
    "type": "user_message",
    "message_id": 1,
    "text": "I need an electrician in Koramangala next week, no budget limit",
    "seq": 1
   },
   {
-   "at": "2026-11-01T02:08:00.875992+05:30",
-   "ns": 1793479080875993000,
+   "at": "2026-11-01T14:20:49.438394+05:30",
+   "ns": 1793523049438395000,
    "type": "model_call_started",
    "seq": 2
   },
   {
-   "at": "2026-11-01T02:08:04.580160+05:30",
-   "ns": 1793479084580202000,
+   "at": "2026-11-01T14:20:53.171040+05:30",
+   "ns": 1793523053171067000,
    "type": "model_call",
    "model": "llama.cpp",
    "input": {
@@ -33,35 +33,35 @@
     "read_results": []
    },
    "raw_output": "{\"actions\":[{\"type\":\"set_intent\",\"intent\":\"book\"},{\"type\":\"update_details\",\"details\":{\"service\":\"electrician\"}},{\"type\":\"update_details\",\"details\":{\"area\":\"koramangala\"}},{\"type\":\"update_details\",\"details\":{\"when\":\"next_week\"}},{\"type\":\"update_details\",\"details\":{\"budget\":\"no_limit\"}}],\"done\":true}",
-   "latency_ms": 3704.08,
-   "prompt_tokens": 1201,
+   "latency_ms": 3732.62,
+   "prompt_tokens": 1486,
    "completion_tokens": 71,
-   "compute_seconds": 3.688488,
+   "compute_seconds": 3.725045,
    "seq": 3
   },
   {
-   "at": "2026-11-01T02:08:04.590500+05:30",
-   "ns": 1793479084590513000,
+   "at": "2026-11-01T14:20:53.175346+05:30",
+   "ns": 1793523053175356000,
    "type": "run_started",
    "run_id": "run-1",
    "workflow": "book",
    "seq": 4
   },
   {
-   "at": "2026-11-01T02:08:04.596701+05:30",
-   "ns": 1793479084596709000,
+   "at": "2026-11-01T14:20:53.178361+05:30",
+   "ns": 1793523053178365000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.08,
+   "latency_ms": 0.07,
    "result": [],
    "seq": 5
   },
   {
-   "at": "2026-11-01T02:08:04.598163+05:30",
-   "ns": 1793479084598171000,
+   "at": "2026-11-01T14:20:53.179482+05:30",
+   "ns": 1793523053179487000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "COLLECTING",
@@ -70,8 +70,8 @@
    "seq": 6
   },
   {
-   "at": "2026-11-01T02:08:04.600389+05:30",
-   "ns": 1793479084600390000,
+   "at": "2026-11-01T14:20:53.181491+05:30",
+   "ns": 1793523053181493000,
    "type": "tool_call",
    "tool": "search_providers",
    "args": [
@@ -82,7 +82,7 @@
      "2026-11-08"
     ]
    ],
-   "latency_ms": 1.66,
+   "latency_ms": 1.43,
    "result": [
     {
      "id": "electrician-koramangala-1",
@@ -429,20 +429,20 @@
    "seq": 7
   },
   {
-   "at": "2026-11-01T02:08:04.622244+05:30",
-   "ns": 1793479084622250000,
+   "at": "2026-11-01T14:20:53.203251+05:30",
+   "ns": 1793523053203255000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.08,
+   "latency_ms": 0.06,
    "result": [],
    "seq": 8
   },
   {
-   "at": "2026-11-01T02:08:04.623379+05:30",
-   "ns": 1793479084623382000,
+   "at": "2026-11-01T14:20:53.204153+05:30",
+   "ns": 1793523053204156000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "SEARCHING",
@@ -451,8 +451,8 @@
    "seq": 9
   },
   {
-   "at": "2026-11-01T02:08:04.624508+05:30",
-   "ns": 1793479084624513000,
+   "at": "2026-11-01T14:20:53.205403+05:30",
+   "ns": 1793523053205406000,
    "type": "reply",
    "reply_id": 1,
    "text": "Here are the options that fit:\n  1. Electrician Partner 3 (Koramangala): Mon 2 Nov, 09:00, ₹1,600, rated 3.9\n  2. Electrician Partner 3 (Koramangala): Mon 2 Nov, 11:00, ₹1,600, rated 3.9\n  3. Electrician Partner 2 (Koramangala): Mon 2 Nov, 09:00, ₹1,650, rated 4.3\n  4. Electrician Partner 2 (Koramangala): Mon 2 Nov, 14:00, ₹1,650, rated 4.3\n  5. Electrician Partner 1 (Koramangala): Mon 2 Nov, 12:00, ₹1,700, rated 3.4\nWhich one would you like? Reply with its number.",
@@ -462,16 +462,16 @@
    "seq": 10
   },
   {
-   "at": "2026-11-01T02:08:04.625463+05:30",
-   "ns": 1793479084625465000,
+   "at": "2026-11-01T14:20:53.206465+05:30",
+   "ns": 1793523053206470000,
    "type": "user_message",
    "message_id": 2,
    "text": "1",
    "seq": 11
   },
   {
-   "at": "2026-11-01T02:08:04.626338+05:30",
-   "ns": 1793479084626341000,
+   "at": "2026-11-01T14:20:53.207199+05:30",
+   "ns": 1793523053207206000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "PRESENTING",
@@ -480,25 +480,25 @@
    "seq": 12
   },
   {
-   "at": "2026-11-01T02:08:04.628558+05:30",
-   "ns": 1793479084628560000,
+   "at": "2026-11-01T14:20:53.209209+05:30",
+   "ns": 1793523053209210000,
    "type": "tool_call",
    "tool": "hold_slot",
    "args": [
     "electrician-koramangala-3",
     "2026-11-02T09:00"
    ],
-   "latency_ms": 1.78,
+   "latency_ms": 1.59,
    "result": {
     "hold_id": "hold-1",
-    "expires_at": "2026-11-01T02:18:04.627851+05:30",
+    "expires_at": "2026-11-01T14:30:53.208522+05:30",
     "quoted_price": 1600
    },
    "seq": 13
   },
   {
-   "at": "2026-11-01T02:08:04.629869+05:30",
-   "ns": 1793479084629871000,
+   "at": "2026-11-01T14:20:53.210566+05:30",
+   "ns": 1793523053210571000,
    "type": "approval",
    "approval_id": "approval-1",
    "status": "pending",
@@ -509,8 +509,8 @@
    "seq": 14
   },
   {
-   "at": "2026-11-01T02:08:04.630527+05:30",
-   "ns": 1793479084630529000,
+   "at": "2026-11-01T14:20:53.211380+05:30",
+   "ns": 1793523053211383000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "HOLDING",
@@ -519,8 +519,8 @@
    "seq": 15
   },
   {
-   "at": "2026-11-01T02:08:04.631733+05:30",
-   "ns": 1793479084631736000,
+   "at": "2026-11-01T14:20:53.212704+05:30",
+   "ns": 1793523053212706000,
    "type": "reply",
    "reply_id": 2,
    "text": "Please confirm exactly this:\n  Action:   Book\n  Provider: Electrician Partner 3 (Koramangala)\n  Slot:     Mon 2 Nov, 09:00\n  Price:    ₹1,600\nReply yes to confirm, or no to decline.",
@@ -530,16 +530,16 @@
    "seq": 16
   },
   {
-   "at": "2026-11-01T02:08:04.632483+05:30",
-   "ns": 1793479084632485000,
+   "at": "2026-11-01T14:20:53.213488+05:30",
+   "ns": 1793523053213490000,
    "type": "user_message",
    "message_id": 3,
    "text": "yes",
    "seq": 17
   },
   {
-   "at": "2026-11-01T02:08:04.632867+05:30",
-   "ns": 1793479084632868000,
+   "at": "2026-11-01T14:20:53.213980+05:30",
+   "ns": 1793523053213981000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "AWAITING_APPROVAL",
@@ -548,8 +548,8 @@
    "seq": 18
   },
   {
-   "at": "2026-11-01T02:08:04.633342+05:30",
-   "ns": 1793479084633344000,
+   "at": "2026-11-01T14:20:53.214494+05:30",
+   "ns": 1793523053214495000,
    "type": "approval",
    "approval_id": "approval-1",
    "status": "approved",
@@ -558,21 +558,21 @@
    "seq": 19
   },
   {
-   "at": "2026-11-01T02:08:04.634202+05:30",
-   "ns": 1793479084634204000,
+   "at": "2026-11-01T14:20:53.215473+05:30",
+   "ns": 1793523053215474000,
    "type": "tool_call",
    "tool": "book",
    "args": [
     "hold-1",
     "idem-approval-1"
    ],
-   "latency_ms": 0.55,
+   "latency_ms": 0.62,
    "error": "slot_taken",
    "seq": 20
   },
   {
-   "at": "2026-11-01T02:08:04.634648+05:30",
-   "ns": 1793479084634653000,
+   "at": "2026-11-01T14:20:53.215946+05:30",
+   "ns": 1793523053215948000,
    "type": "approval",
    "approval_id": "approval-1",
    "status": "voided",
@@ -580,8 +580,8 @@
    "seq": 21
   },
   {
-   "at": "2026-11-01T02:08:04.634907+05:30",
-   "ns": 1793479084634908000,
+   "at": "2026-11-01T14:20:53.216216+05:30",
+   "ns": 1793523053216217000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "EXECUTING",
@@ -590,8 +590,8 @@
    "seq": 22
   },
   {
-   "at": "2026-11-01T02:08:04.636049+05:30",
-   "ns": 1793479084636050000,
+   "at": "2026-11-01T14:20:53.217460+05:30",
+   "ns": 1793523053217461000,
    "type": "tool_call",
    "tool": "search_providers",
    "args": [
@@ -602,7 +602,7 @@
      "2026-11-08"
     ]
    ],
-   "latency_ms": 0.71,
+   "latency_ms": 0.77,
    "result": [
     {
      "id": "electrician-koramangala-1",
@@ -948,20 +948,20 @@
    "seq": 23
   },
   {
-   "at": "2026-11-01T02:08:04.648581+05:30",
-   "ns": 1793479084648583000,
+   "at": "2026-11-01T14:20:53.230010+05:30",
+   "ns": 1793523053230011000,
    "type": "tool_call",
    "tool": "list_bookings",
    "args": [
     "user-1"
    ],
-   "latency_ms": 0.03,
+   "latency_ms": 0.01,
    "result": [],
    "seq": 24
   },
   {
-   "at": "2026-11-01T02:08:04.649112+05:30",
-   "ns": 1793479084649115000,
+   "at": "2026-11-01T14:20:53.230522+05:30",
+   "ns": 1793523053230526000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "SEARCHING",
@@ -970,8 +970,8 @@
    "seq": 25
   },
   {
-   "at": "2026-11-01T02:08:04.649949+05:30",
-   "ns": 1793479084649951000,
+   "at": "2026-11-01T14:20:53.231431+05:30",
+   "ns": 1793523053231433000,
    "type": "reply",
    "reply_id": 3,
    "text": "That slot is no longer available, so nothing was changed for Mon 2 Nov, 09:00. Here is what else is open.\nHere are the options that fit:\n  1. Electrician Partner 3 (Koramangala): Mon 2 Nov, 11:00, ₹1,600, rated 3.9\n  2. Electrician Partner 3 (Koramangala): Mon 2 Nov, 16:00, ₹1,600, rated 3.9\n  3. Electrician Partner 2 (Koramangala): Mon 2 Nov, 09:00, ₹1,650, rated 4.3\n  4. Electrician Partner 2 (Koramangala): Mon 2 Nov, 14:00, ₹1,650, rated 4.3\n  5. Electrician Partner 1 (Koramangala): Mon 2 Nov, 12:00, ₹1,700, rated 3.4\nWhich one would you like? Reply with its number.",
@@ -981,16 +981,16 @@
    "seq": 26
   },
   {
-   "at": "2026-11-01T02:08:04.650645+05:30",
-   "ns": 1793479084650646000,
+   "at": "2026-11-01T14:20:53.232099+05:30",
+   "ns": 1793523053232100000,
    "type": "user_message",
    "message_id": 4,
    "text": "1",
    "seq": 27
   },
   {
-   "at": "2026-11-01T02:08:04.651034+05:30",
-   "ns": 1793479084651036000,
+   "at": "2026-11-01T14:20:53.232511+05:30",
+   "ns": 1793523053232519000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "PRESENTING",
@@ -999,25 +999,25 @@
    "seq": 28
   },
   {
-   "at": "2026-11-01T02:08:04.652373+05:30",
-   "ns": 1793479084652374000,
+   "at": "2026-11-01T14:20:53.233714+05:30",
+   "ns": 1793523053233715000,
    "type": "tool_call",
    "tool": "hold_slot",
    "args": [
     "electrician-koramangala-3",
     "2026-11-02T11:00"
    ],
-   "latency_ms": 1.09,
+   "latency_ms": 0.94,
    "result": {
     "hold_id": "hold-2",
-    "expires_at": "2026-11-01T02:18:04.651753+05:30",
+    "expires_at": "2026-11-01T14:30:53.233240+05:30",
     "quoted_price": 1600
    },
    "seq": 29
   },
   {
-   "at": "2026-11-01T02:08:04.653558+05:30",
-   "ns": 1793479084653560000,
+   "at": "2026-11-01T14:20:53.234897+05:30",
+   "ns": 1793523053234899000,
    "type": "approval",
    "approval_id": "approval-2",
    "status": "pending",
@@ -1028,8 +1028,8 @@
    "seq": 30
   },
   {
-   "at": "2026-11-01T02:08:04.654095+05:30",
-   "ns": 1793479084654096000,
+   "at": "2026-11-01T14:20:53.235515+05:30",
+   "ns": 1793523053235516000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "HOLDING",
@@ -1038,8 +1038,8 @@
    "seq": 31
   },
   {
-   "at": "2026-11-01T02:08:04.655099+05:30",
-   "ns": 1793479084655100000,
+   "at": "2026-11-01T14:20:53.236661+05:30",
+   "ns": 1793523053236663000,
    "type": "reply",
    "reply_id": 4,
    "text": "Please confirm exactly this:\n  Action:   Book\n  Provider: Electrician Partner 3 (Koramangala)\n  Slot:     Mon 2 Nov, 11:00\n  Price:    ₹1,600\nReply yes to confirm, or no to decline.",
@@ -1049,16 +1049,16 @@
    "seq": 32
   },
   {
-   "at": "2026-11-01T02:08:04.655981+05:30",
-   "ns": 1793479084655982000,
+   "at": "2026-11-01T14:20:53.237298+05:30",
+   "ns": 1793523053237300000,
    "type": "user_message",
    "message_id": 5,
    "text": "yes",
    "seq": 33
   },
   {
-   "at": "2026-11-01T02:08:04.656288+05:30",
-   "ns": 1793479084656289000,
+   "at": "2026-11-01T14:20:53.237619+05:30",
+   "ns": 1793523053237620000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "AWAITING_APPROVAL",
@@ -1067,8 +1067,8 @@
    "seq": 34
   },
   {
-   "at": "2026-11-01T02:08:04.656677+05:30",
-   "ns": 1793479084656678000,
+   "at": "2026-11-01T14:20:53.238049+05:30",
+   "ns": 1793523053238050000,
    "type": "approval",
    "approval_id": "approval-2",
    "status": "approved",
@@ -1077,23 +1077,23 @@
    "seq": 35
   },
   {
-   "at": "2026-11-01T02:08:04.658323+05:30",
-   "ns": 1793479084658324000,
+   "at": "2026-11-01T14:20:53.239683+05:30",
+   "ns": 1793523053239685000,
    "type": "tool_call",
    "tool": "book",
    "args": [
     "hold-2",
     "idem-approval-2"
    ],
-   "latency_ms": 1.4,
+   "latency_ms": 1.37,
    "result": {
     "booking_id": "booking-1"
    },
    "seq": 36
   },
   {
-   "at": "2026-11-01T02:08:04.658984+05:30",
-   "ns": 1793479084658985000,
+   "at": "2026-11-01T14:20:53.240392+05:30",
+   "ns": 1793523053240393000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "EXECUTING",
@@ -1102,14 +1102,14 @@
    "seq": 37
   },
   {
-   "at": "2026-11-01T02:08:04.659263+05:30",
-   "ns": 1793479084659264000,
+   "at": "2026-11-01T14:20:53.240674+05:30",
+   "ns": 1793523053240675000,
    "type": "tool_call",
    "tool": "get_booking_status",
    "args": [
     "idem-approval-2"
    ],
-   "latency_ms": 0.02,
+   "latency_ms": 0.01,
    "result": {
     "status": "booked",
     "booking_id": "booking-1"
@@ -1117,16 +1117,16 @@
    "seq": 38
   },
   {
-   "at": "2026-11-01T02:08:04.659561+05:30",
-   "ns": 1793479084659562000,
+   "at": "2026-11-01T14:20:53.240991+05:30",
+   "ns": 1793523053240992000,
    "type": "approval",
    "approval_id": "approval-2",
    "status": "consumed",
    "seq": 39
   },
   {
-   "at": "2026-11-01T02:08:04.659751+05:30",
-   "ns": 1793479084659751000,
+   "at": "2026-11-01T14:20:53.241217+05:30",
+   "ns": 1793523053241219000,
    "type": "transition",
    "run_id": "run-1",
    "from_state": "VERIFYING",
@@ -1135,15 +1135,15 @@
    "seq": 40
   },
   {
-   "at": "2026-11-01T02:08:04.660102+05:30",
-   "ns": 1793479084660103000,
+   "at": "2026-11-01T14:20:53.241601+05:30",
+   "ns": 1793523053241602000,
    "type": "verified",
    "booking_id": "booking-1",
    "seq": 41
   },
   {
-   "at": "2026-11-01T02:08:04.660446+05:30",
-   "ns": 1793479084660447000,
+   "at": "2026-11-01T14:20:53.241950+05:30",
+   "ns": 1793523053241951000,
    "type": "memory",
    "key": "preferred_technician",
    "provenance": "inferred",
@@ -1152,8 +1152,8 @@
    "seq": 42
   },
   {
-   "at": "2026-11-01T02:08:04.661224+05:30",
-   "ns": 1793479084661225000,
+   "at": "2026-11-01T14:20:53.242628+05:30",
+   "ns": 1793523053242630000,
    "type": "reply",
    "reply_id": 6,
    "text": "Booked and verified: Electrician Partner 3 (Koramangala), Mon 2 Nov, 11:00, ₹1,600. Booking id booking-1.\nNoted: your preferred technician might be electrician-koramangala-3. I will ask before using it, and you can say 'forget my preferred technician'.",

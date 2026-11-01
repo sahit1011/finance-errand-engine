@@ -35,6 +35,14 @@ def test_json_text_parses():
         {"actions": [{"type": "propose_memory", "key": "password", "value": "x"}]},
         {"actions": [], "done": "yes"},
         {"actions": [{"type": "stop", "approved": True}]},
+        {"actions": [{"type": "show_memory", "key": "area"}]},
+        {"actions": [{"type": "forget_memory"}]},
+        {"actions": [{"type": "forget_memory", "key": "password"}]},
+        {"actions": [{"type": "correct_memory", "key": "password", "value": "x"}]},
+        {"actions": [{"type": "correct_memory", "key": "area", "value": 5}]},
+        {"actions": [{"type": "answer_question"}]},
+        {"actions": [{"type": "answer_question", "answer": "approved"}]},
+        {"actions": [{"type": "answer_question", "answer": True}]},
     ],
 )
 def test_anything_outside_the_schema_is_rejected(raw):

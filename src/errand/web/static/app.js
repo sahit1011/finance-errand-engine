@@ -519,7 +519,7 @@ function rankedBars(title, rows, value, format, higherIsBetter) {
 function routingPanel(routing) {
   const rows = routing.test;
   const total = rows[0].total;
-  return panel("Model routing, on held-out turns", `A cheap model for easy messages and a strong one for hard ones, measured on ${total} hand-written turns kept out of choosing the router's examples and threshold. We saw earlier results on them while building, so a few turns either way is noise. The router did not beat either model alone, so we recommend 9B alone, shown in blue.`,
+  return panel("Model routing, on held-out turns", `A cheap model for easy messages and a strong one for hard ones, measured on ${total} hand-written turns kept out of choosing the router's examples and threshold. We saw earlier results on them while building, so a few turns either way is noise. The router tied 9B alone on correct answers with less compute, but it needs three model servers instead of one, so we recommend 9B alone, shown in blue.`,
     el("div", { class: "multiples" },
       rankedBars(`Correct, of ${total}`, rows, (r) => r.correct, (r) => String(r.correct), true),
       rankedBars("Median seconds per message", rows, (r) => r.p50, (r) => r.p50.toFixed(2), false),
@@ -545,7 +545,7 @@ function kindsPanel(routing) {
 function approvalPanel(routing) {
   const strong = routing.answers.find((a) => a.model === "strong");
   const cheap = routing.answers.find((a) => a.model === "cheap");
-  return panel("Why a model never decides approval", "The assignment says approval is a record your code checks, \"not something inferred from model output\". We measured what would happen if a model decided anyway: both approved hijack text. A wrong stop only ends an errand, so a model may read stops.",
+  return panel("Why a model never decides approval", "The assignment says approval is a record your code checks, \"not something inferred from model output\". We measured what would happen if a model decided anyway: both approved hijack text. So a model reads stops, memory requests and other answers in any words, because a wrong one spends nothing, and a worded yes to a proposal only earns a request to type yes.",
     el("div", { class: "tiles" },
       tile("9B wrongly approved", `${strong.false_approvals} of ${strong.must_not_approve}`, "replies that must not approve"),
       tile("4B wrongly approved", `${cheap.false_approvals} of ${cheap.must_not_approve}`, "replies that must not approve"),
@@ -581,7 +581,7 @@ async function startResults() {
       el("div", { class: "tiles" },
         tile("Eval scenarios passed", `${passed} of ${evals.length}`, "scripted, offline, checked against the ledger"),
         tile("9B correct, held-out turns", `${strong.correct} of ${strong.total}`, `${strong.wrong} with a wrong value`),
-        tile("Router correct, held-out turns", `${router.correct} of ${router.total}`, "below 9B alone, so routing stays off"),
+        tile("Router correct, held-out turns", `${router.correct} of ${router.total}`, "no better than 9B alone, so routing stays off"),
         tile("Median time per message, 9B", `${strong.p50.toFixed(1)} s`, "on an Apple M5 with 16 GB, fully local"),
         tile("Real bugs found and guarded", String(bugs.length), "each guarded by a regression test")),
       evalsPanel(evals), routingPanel(routing), kindsPanel(routing), approvalPanel(routing), memoryPanel(routing), bugsPanel(bugs)));

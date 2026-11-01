@@ -1,4 +1,8 @@
-"""Decides in code what a raw user message means when it is a bare answer or command. No model is involved."""
+"""Decides in code what a raw user message means when it is a bare answer or command. No model is involved.
+
+These lists are a fast path, not the only way in: a model reads every other wording of a command. The exception is
+approval, which only this code can grant, because a wrong approval spends money and a wrong anything else does not.
+"""
 
 import re
 import unicodedata
@@ -35,12 +39,12 @@ def _canonical(text: str) -> str:
 
 _YES = {
     "yes", "y", "yeah", "yep", "ok", "okay", "sure", "confirm", "confirmed", "yes please", "yes confirm", "go ahead", "book it", "do it",
-    "please book it", "approve", "haan", "han", "haan ji", "ji haan", "theek hai", "thik hai", "bilkul", "kar do", "book kar do", "kar dijiye",
+    "please book it", "yes book it", "proceed", "please proceed", "yes proceed", "yes go ahead", "yes do it", "confirm it", "approve", "haan", "han", "haan ji", "ji haan", "theek hai", "thik hai", "bilkul", "kar do", "book kar do", "kar dijiye",
     "हाँ", "हां", "हाँ जी", "हां जी", "जी हाँ", "जी हां", "ठीक है", "बिल्कुल", "बिलकुल", "कर दो",
 }
-_NAMES_BOOKING = {"book it", "please book it", "book kar do"}
+_NAMES_BOOKING = {"book it", "please book it", "yes book it", "book kar do"}
 _NO = {"no", "n", "nope", "no thanks", "dont", "do not", "nahi", "nahin", "nahi chahiye", "mat karo", "नहीं", "नही", "मत करो"}
-# Models never run while a write is in flight, so a stop must be recognisable here to apply at that moment.
+# Recognised without a model, so a stop still works while a write is in flight even if the model is down.
 _STOP = {
     "stop", "never mind", "nevermind", "abandon", "cancel this", "forget it", "quit",
     "ruk jao", "ruko", "rehne do", "chhodo", "chhod do", "band karo", "रुक जाओ", "रुको", "रहने दो", "छोड़ो", "छोड़ दो", "बंद करो",
@@ -68,7 +72,8 @@ _NUMBER = re.compile(r"^(?:option |number )?(\d+)$")
 
 
 def _normalise(text: str) -> str:
-    cleaned = _canonical(text).strip().lower().replace("'", "")
+    # A comma inside a phrase changes nothing, and a phrase still has to match in full to count.
+    cleaned = re.sub(r"\s*,\s*", " ", _canonical(text).strip().lower().replace("'", ""))
     cleaned = re.sub(r"\s+", " ", cleaned)
     return cleaned.rstrip(".!, ।")
 
@@ -81,12 +86,12 @@ def classify(text: str) -> Intake:
         return Intake(Kind.NO)
     if cleaned in _STOP:
         return Intake(Kind.STOP)
-    if cleaned.rstrip("?") in _MEMORY_VIEW:
+    if cleaned.rstrip("? ") in _MEMORY_VIEW:
         return Intake(Kind.MEMORY_VIEW)
     match = _NUMBER.match(cleaned)
     if match:
         return Intake(Kind.NUMBER, number=int(match.group(1)))
-    match = _FORGET.match(cleaned.rstrip("?"))
+    match = _FORGET.match(cleaned.rstrip("? "))
     if match:
         return Intake(Kind.MEMORY_FORGET, key=_MEMORY_NAMES[match.group(1)])
     match = _SET.match(re.sub(r"\s+", " ", text.strip()).rstrip(".!?, "))
