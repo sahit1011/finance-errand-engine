@@ -1,9 +1,9 @@
 # Errand Agent: Development Plan
 
-We build eight vertical slices, and each ends in something runnable with its own proof. Core work comes
+We build nine vertical slices, and each ends in something runnable with its own proof. Core work comes
 first and needs no installs. Model work comes after the must-haves are solid, as the assignment asks.
 
-Slices 1-7 and 9 are built. Slice 8 is built apart from the demo recording, which the author must record.
+Slices 1-7, 9 and 10 are built. Slice 8 is built apart from the demo recording, which the author must record.
 
 ## Slices
 
@@ -13,11 +13,12 @@ Slices 1-7 and 9 are built. Slice 8 is built apart from the demo recording, whic
 | 2 | Approval and booking safety | Approval records, typed pending questions, stop, gateway check, idempotency, timeout recovery, crash and restart, undelivered replies | Scenarios 7, 9-17, 28, 29, 32, 33, 37, 38, 39 and 40 pass, including crash injection |
 | 3 | All three actions | Reschedule, cancel, duplicate check, price lookup | Scenarios 18, 19, 27, 30 and 42 pass |
 | 4 | Conversation and memory | Ask-only-what-is-missing, corrections, "same as last time", memory view, correct and forget | Scenarios 2, 3, 4, 8, 20-22, 34 and 41 pass across sessions |
-| 5 | Hardening | Caps, untrusted content handling, trace sanitising, invariants on every run, generated eval table | Scenarios 5, 6, 23-26, 31, 35 and 36 pass, so all 42 pass offline; `eval_results.md` is generated; breaking a rule on purpose fails evals |
+| 5 | Hardening | Caps, untrusted content handling, trace sanitising, invariants on every run, generated eval table | Scenarios 5, 6, 23-26, 31, 35 and 36 pass, so every scenario passes offline; `eval_results.md` is generated; breaking a rule on purpose fails evals |
 | 6 | Live chat | Install llama.cpp, add one local LLM behind the existing interface, wall-clock review | A real chat books through to verified success, with trace recorded |
 | 7 | Model routing | Labelled turn set, router candidates, ladder, measured comparison | Results table from a real run, with quality, latency and memory |
 | 8 | Deliverables | README, design note, chosen raw trace, final `BUGS.md`, demo recording | Fresh clone runs and tests in 3 commands or fewer; every box below is ticked |
 | 9 | Web app | Chat with a live workflow timeline, results charts, replay of saved runs, published copy | Server safety tests pass; a real chat drives the page in a browser; the published page loads with no server |
+| 10 | Understanding in any words | A model reads memory requests, stops and worded answers; approval stays in code; scenarios 43-47 | Both models re-measured with wrong values not rising; a worded yes never approves, and a sabotage test proves the evals notice |
 
 Scenario numbers refer to the table in [SPECS.md](SPECS.md#evals).
 

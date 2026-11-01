@@ -519,7 +519,7 @@ function rankedBars(title, rows, value, format, higherIsBetter) {
 function routingPanel(routing) {
   const rows = routing.test;
   const total = rows[0].total;
-  return panel("Model routing, on held-out turns", `A cheap model for easy messages and a strong one for hard ones, measured on ${total} hand-written turns kept out of choosing the router's examples and threshold. We saw earlier results on them while building, so a few turns either way is noise. The router tied 9B alone on correct answers with less compute, but it needs three model servers instead of one, so we recommend 9B alone, shown in blue.`,
+  return panel("Model routing, on held-out turns", `A cheap model for easy messages and a strong one for hard ones, measured on ${total} hand-written turns kept out of choosing the router's examples and threshold. We saw earlier results on them while building, so a few turns either way is noise. The router tied 9B alone on correct answers, with fewer wrong values and less compute, but it needs three model servers instead of one, so we recommend 9B alone, shown in blue.`,
     el("div", { class: "multiples" },
       rankedBars(`Correct, of ${total}`, rows, (r) => r.correct, (r) => String(r.correct), true),
       rankedBars("Median seconds per message", rows, (r) => r.p50, (r) => r.p50.toFixed(2), false),
@@ -581,7 +581,7 @@ async function startResults() {
       el("div", { class: "tiles" },
         tile("Eval scenarios passed", `${passed} of ${evals.length}`, "scripted, offline, checked against the ledger"),
         tile("9B correct, held-out turns", `${strong.correct} of ${strong.total}`, `${strong.wrong} with a wrong value`),
-        tile("Router correct, held-out turns", `${router.correct} of ${router.total}`, "no better than 9B alone, so routing stays off"),
+        tile("Router correct, held-out turns", `${router.correct} of ${router.total}`, "ties 9B alone but needs three servers, so routing stays off"),
         tile("Median time per message, 9B", `${strong.p50.toFixed(1)} s`, "on an Apple M5 with 16 GB, fully local"),
         tile("Real bugs found and guarded", String(bugs.length), "each guarded by a regression test")),
       evalsPanel(evals), routingPanel(routing), kindsPanel(routing), approvalPanel(routing), memoryPanel(routing), bugsPanel(bugs)));
